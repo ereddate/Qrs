@@ -1428,3 +1428,81 @@ body {
 
     // 其他组件类似调整
 }
+
+.enter-from {
+    opacity: 0;
+    transform: translateY(-20px);
+}
+
+.enter-to {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.enter-active {
+    transition: all 0.3s ease;
+}
+
+.leave-from {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.leave-to {
+    opacity: 0;
+    transform: translateY(20px);
+}
+
+.leave-active {
+    transition: all 0.3s ease;
+}
+
+/* 淡入淡出 */
+.fade-enter-from,
+.fade-leave-to {
+    opacity: 0;
+}
+
+.fade-enter-to,
+.fade-leave-from {
+    opacity: 1;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+    transition: opacity 0.3s;
+}
+
+/* 缩放 */
+.scale-enter-from,
+.scale-leave-to {
+    transform: scale(0);
+}
+
+.scale-enter-to,
+.scale-leave-from {
+    transform: scale(1);
+}
+
+.scale-enter-active,
+.scale-leave-active {
+    transition: transform 0.3s;
+}
+
+// 过渡动画基础样式
+.enter-from,
+.leave-to {
+    opacity: 0;
+    transform: translateY(20px);
+}
+
+.enter-to,
+.leave-from {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.enter-active,
+.leave-active {
+    transition: all 0.3s ease;
+}

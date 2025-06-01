@@ -34,6 +34,7 @@ export default defineConfig({
         qrsStore: path.resolve(__dirname, "core/store.js"),
         qrsRouter: path.resolve(__dirname, "core/router.js"),
         qrsFetch: path.resolve(__dirname, "core/fetch.js"),
+        qrsDom: path.resolve(__dirname, "core/dom.js"),
         main: path.resolve(__dirname, "main.js"),
         index: path.resolve(__dirname, "index.html"),
       },

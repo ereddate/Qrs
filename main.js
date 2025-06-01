@@ -1,10 +1,20 @@
-import { reactive, createElem, Component, createApp } from "./core/index.js";
+import {
+  reactive,
+  createElem,
+  Component,
+  createApp,
+  Transition,
+} from "./core/index.js";
 import "./core/ui/base.scss";
 import store from "./src/store/index.js";
 import fetch from "./src/ajax/index.js";
 import { RouterView } from "@/core/router.js";
 import router from "./src/router/index.js";
+import Dom from "./core/dom.js";
 
+const dom = new Dom("body");
+const testP = document.createElement("p");
+dom.append(testP).find(testP).html("Hello World");
 // 发送 GET 请求
 fetch
   .request({
@@ -37,6 +47,44 @@ fetch
   .catch((error) => {
     console.error("登录失败:", error);
   });
+
+// 创建 Transition 组件
+const MyTransition = new Transition({
+  show: true,
+  css: true,
+  onBeforeEnter(el) {
+    console.log("进入前", el);
+  },
+  onEnter(el, done) {
+    console.log("进入中", el);
+    setTimeout(done, 300); // 动画持续时间
+  },
+  onAfterEnter(el) {
+    console.log("进入后", el);
+  },
+  onBeforeLeave(el) {
+    console.log("离开前", el);
+  },
+  onLeave(el, done) {
+    console.log("离开中", el);
+    setTimeout(done, 300); // 动画持续时间
+  },
+  onAfterLeave(el) {
+    console.log("离开后", el);
+  },
+  children: [
+    createElem(
+      "div",
+      {
+        class: "box",
+        style: {
+          transition: "all 0.3s ease", // 确保元素本身也有过渡属性
+        },
+      },
+      "过渡动画内容"
+    ),
+  ],
+});
 
 const state = reactive({ count: 0 }, (key, oldValue, newValue) => {
   console.log("state updated", key, oldValue, newValue);
@@ -103,7 +151,8 @@ const App = new Component({
         updated() {
           console.log("updated");
         },
-      })
+      }),
+      MyTransition
     );
   },
 });

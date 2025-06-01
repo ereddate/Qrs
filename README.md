@@ -3,10 +3,11 @@
 
 ## 功能说明
 ### 核心模块
-- `index.js`：导出了多个重要的功能和变量，如 `name`、`reactive`、`createElem` 等。
+- `index.js`：导出了多个重要的功能和变量，如 `Component`、`reactive`、`createElem` 等。
 - `router.js`：引入 `index.js` 中的部分功能，用于路由管理。
 - `store.js`：用于状态管理。
 - `fetch.js`：用于网络请求。
+- `dom.js`：用于dom的操作，类似`jQuery`，并可在`dom<=>Component`和`dom<=>VNode`间切换。
 
 ### 主要功能
 - **响应式系统**：通过 `reactive` 函数实现数据的响应式。
@@ -33,10 +34,13 @@ npm run build
 ## 项目结构
 ```
 ├── core/
+│   ├── dom.js
+│   ├── index.js
 │   ├── fetch.js
 │   ├── index.js
 │   ├── router.js
 │   ├── store.js
+│   ├── typeCheck.js
 │   └── ui/
 │       └── base.scss
 ├── dist/
