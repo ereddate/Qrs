@@ -1,0 +1,18 @@
+{
+  "name": "qrs",
+  "version": "1.0.0",
+  "description": "",
+  "main": "main.js",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "sass-embedded": "^1.89.0",
+    "vite": "^6.3.5"
+  }
+}
