@@ -73,13 +73,20 @@ function queueJob(job) {
     });
   }
 }
-
+let flushIndex = 0; // 新增执行索引
 function flushJobs() {
   try {
-    queue.forEach((job) => job());
+    // 转换为数组并按优先级排序
+    const jobs = Array.from(queue).sort(
+      (a, b) => (a.priority || 0) - (b.priority || 0)
+    );
+    for (flushIndex = 0; flushIndex < jobs.length; flushIndex++) {
+      jobs[flushIndex]();
+    }
   } finally {
     isFlushing = false;
     queue.clear();
+    flushIndex = 0;
     // 在任务队列执行完成后执行回调
     nextTick(() => {
       // 这里可以添加全局的更新完成后的回调逻辑
@@ -109,168 +116,60 @@ function createEventEmitter() {
 }
 
 function reactive(obj, callback) {
-  if (Object.is(obj) || obj === null) {
-    return obj;
-  }
   if (reactiveMap.has(obj)) {
     return reactiveMap.get(obj);
   }
-
   const deps = new Map();
-  const proxy = {};
   const eventEmitter = createEventEmitter();
-
-  if (Function.is(Proxy)) {
-    // 支持 Proxy 的环境
-    const proxy = new Proxy(obj, {
-      get(target, key) {
-        if (effectStack.length > 0) {
-          const activeEffect = effectStack[effectStack.length - 1];
-          if (!deps.has(key)) {
-            deps.set(key, new Set());
-          }
-          deps.get(key).add(activeEffect);
+  // 支持 Proxy 的环境
+  const proxy = new Proxy(obj, {
+    get(target, key) {
+      if (effectStack.length > 0) {
+        const activeEffect = effectStack[effectStack.length - 1];
+        if (!deps.has(key)) {
+          deps.set(key, new Set());
         }
-        const value = target[key];
-        return Object.is(value) && value !== null ? reactive(value) : value;
-      },
-      set(target, key, value) {
-        if (Object.is(target[key], value)) {
-          return true;
-        }
+        deps.get(key).add(activeEffect);
+      }
+      const value = target[key];
+      return Object.is(value) && value !== null ? reactive(value) : value;
+    },
+    set(target, key, value) {
+      if (Object.is(target[key], value)) {
+        return true;
+      }
+      const oldValue = target[key];
+      target[key] = value;
+      if (deps.has(key)) {
+        deps.get(key).forEach((effect) => queueJob(effect));
+      }
+      if (Function.is(callback)) {
+        nextTick(() => {
+          callback(key, oldValue, value);
+        });
+      }
+      return true;
+    },
+    deleteProperty(target, key) {
+      if (key in target) {
         const oldValue = target[key];
-        target[key] = value;
+        delete target[key];
         if (deps.has(key)) {
           deps.get(key).forEach((effect) => queueJob(effect));
         }
         if (Function.is(callback)) {
           nextTick(() => {
-            callback(key, oldValue, value);
-          });
-        }
-        return true;
-      },
-      deleteProperty(target, key) {
-        if (key in target) {
-          const oldValue = target[key];
-          delete target[key];
-          if (deps.has(key)) {
-            deps.get(key).forEach((effect) => queueJob(effect));
-          }
-          if (Function.is(callback)) {
-            nextTick(() => {
-              callback(key, oldValue, undefined);
-            });
-          }
-          eventEmitter.emit("delete", key, oldValue);
-          return true;
-        }
-        return false;
-      },
-    });
-    reactiveMap.set(obj, proxy);
-    return proxy;
-  } else {
-    // 不支持 Proxy 的环境，使用 Object.defineProperty
-    // 复制原对象属性
-    for (const key in obj) {
-      if (obj.hasOwnProperty(key)) {
-        let value = obj[key];
-        const dep = new Set();
-        deps.set(key, dep);
-        Object.defineProperty(proxy, key, {
-          get() {
-            if (effectStack.length > 0) {
-              const activeEffect = effectStack[effectStack.length - 1];
-              dep.add(activeEffect);
-            }
-            return Object.is(value) && value !== null ? reactive(value) : value;
-          },
-          set(newValue) {
-            if (Object.is(value, newValue)) {
-              return;
-            }
-            const oldValue = value;
-            value = newValue;
-            dep.forEach((effect) => queueJob(effect));
-            if (Function.is(callback)) {
-              callback(key, oldValue, newValue);
-            }
-          },
-        });
-      }
-    }
-
-    // 自定义方法监听属性新增
-    proxy.$set = function (key, value) {
-      if (!(key in proxy)) {
-        let dep = new Set();
-        deps.set(key, dep);
-        Object.defineProperty(proxy, key, {
-          get() {
-            if (effectStack.length > 0) {
-              const activeEffect = effectStack[effectStack.length - 1];
-              dep.add(activeEffect);
-            }
-            return Object.is(value) && value !== null ? reactive(value) : value;
-          },
-          set(newValue) {
-            if (Object.is(value, newValue)) {
-              return;
-            }
-            const oldValue = value;
-            value = newValue;
-            dep.forEach((effect) => queueJob(effect));
-            if (Function.is(callback)) {
-              nextTick(() => {
-                callback(key, oldValue, newValue);
-              });
-            }
-          },
-        });
-        eventEmitter.emit("add", key, value);
-        if (Function.is(callback)) {
-          nextTick(() => {
-            callback(key, undefined, value);
-          });
-        }
-      }
-      proxy[key] = value;
-      // 在属性新增，DOM 可能更新后执行回调
-      nextTick(() => {
-        if (Function.is(this.props?.afterSet)) {
-          this.props.afterSet.call(this, key, value);
-        }
-      });
-    };
-
-    // 自定义方法监听属性删除
-    proxy.$delete = function (key) {
-      if (key in proxy) {
-        const oldValue = proxy[key];
-        delete proxy[key];
-        deps.delete(key);
-        eventEmitter.emit("delete", key, oldValue);
-        if (Function.is(callback)) {
-          nextTick(() => {
             callback(key, oldValue, undefined);
           });
         }
-        // 在属性删除，DOM 可能更新后执行回调
-        nextTick(() => {
-          if (Function.is(this.props?.afterDelete)) {
-            this.props.afterDelete.call(this, key, oldValue);
-          }
-        });
+        eventEmitter.emit("delete", key, oldValue);
+        return true;
       }
-    };
-
-    // 添加事件监听方法
-    proxy.$on = eventEmitter.on.bind(eventEmitter);
-
-    reactiveMap.set(obj, proxy);
-    return proxy;
-  }
+      return false;
+    },
+  });
+  reactiveMap.set(obj, proxy);
+  return proxy;
 }
 
 function computed(getter) {
@@ -416,21 +315,30 @@ class Component {
     return el;
   }
   update() {
-    this.props?.beforeUpdate?.call(this);
-    const newEl = this.render();
-    // 比较新旧 DOM 节点，若相同则不更新
-    if (this.el && this.el.isEqualNode(newEl)) {
-      return;
-    }
+    // 添加防抖逻辑
+    if (this._pendingUpdate) return;
+    this._pendingUpdate = true;
 
-    if (this.el?.parentNode) {
-      this.el.parentNode.replaceChild(newEl, this.el);
-    } else {
-      this.el?.replaceWith(newEl);
-    }
-    this.el = newEl;
-    this.props?.updated?.call(this);
+    nextTick(() => {
+      this._pendingUpdate = false;
+      this.props?.beforeUpdate?.call(this);
+      // 使用requestAnimationFrame优化DOM更新
+      requestAnimationFrame(() => {
+        const newEl = this.render();
+        // 比较新旧 DOM 节点，若相同则不更新
+        if (this.el && this.el.isEqualNode(newEl)) {
+          return;
+        }
 
+        if (this.el?.parentNode) {
+          this.el.parentNode.replaceChild(newEl, this.el);
+        } else {
+          this.el?.replaceWith(newEl);
+        }
+        this.el = newEl;
+        this.props?.updated?.call(this);
+      });
+    });
     // 在 DOM 更新完成后执行回调
     nextTick(() => {
       if (Function.is(this.props?.afterUpdate)) {
@@ -551,12 +459,11 @@ class VNode {
     return this;
   }
 
-  is(obj) {
-    return obj instanceof VNode;
-  }
-
   render() {
     const that = this;
+
+    // 添加缓存机制
+    if (this._cachedEl) return this._cachedEl;
     if (isComponent(this.tag) || isVNode(this.tag)) {
       // 修正递归逻辑
       const newInstance = new this.tag.constructor(this.props);
@@ -574,7 +481,18 @@ class VNode {
     if (this.children) {
       updateChildren.bind(this)(elem, this.children);
     }
+    this._cachedEl = elem; // 缓存结果
     return elem;
+  }
+
+  // 添加shouldUpdate方法
+  shouldUpdate(newVNode) {
+    if (this.tag !== newVNode.tag) return true;
+    if (JSON.stringify(this.props) !== JSON.stringify(newVNode.props))
+      return true;
+    if (JSON.stringify(this.children) !== JSON.stringify(newVNode.children))
+      return true;
+    return false;
   }
 }
 
@@ -614,15 +532,52 @@ function createApp(rootComponent) {
 }
 
 // 定义 nextTick 函数
-function nextTick(callback) {
-  if (Function.is(callback)) {
-    // 使用 Promise.resolve() 创建一个微任务
-    Promise.resolve().then(callback);
-  } else {
-    // 如果没有传入回调，返回一个 Promise 供链式调用
-    return Promise.resolve();
+const nextTick = (() => {
+  const callbacks = [];
+  let pending = false;
+
+  function flushCallbacks() {
+    pending = false;
+    const copies = callbacks.slice();
+    callbacks.length = 0;
+    for (let i = 0; i < copies.length; i++) {
+      copies[i]();
+    }
   }
-}
+
+  // 优先使用MutationObserver
+  let timerFunc;
+  if (typeof MutationObserver !== "undefined") {
+    let counter = 1;
+    const observer = new MutationObserver(flushCallbacks);
+    const textNode = document.createTextNode(String(counter));
+    observer.observe(textNode, { characterData: true });
+    timerFunc = () => {
+      counter = (counter + 1) % 2;
+      textNode.data = String(counter);
+    };
+  } else {
+    timerFunc = () => Promise.resolve().then(flushCallbacks);
+  }
+
+  return function (cb) {
+    if (Function.is(cb)) {
+      callbacks.push(cb);
+      if (!pending) {
+        pending = true;
+        timerFunc();
+      }
+    } else {
+      return new Promise((resolve) => {
+        callbacks.push(resolve);
+        if (!pending) {
+          pending = true;
+          timerFunc();
+        }
+      });
+    }
+  };
+})();
 
 // 服务端渲染相关函数
 function vnodeToHtml(vnode) {

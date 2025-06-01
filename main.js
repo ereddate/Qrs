@@ -79,6 +79,7 @@ const el = new Component({
               state.count++;
               this.data.count++;
               store.commit("increment");
+              console.log(this.data.count);
             },
           },
         },
