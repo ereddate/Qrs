@@ -35,7 +35,6 @@ npm run build
 ```
 ├── core/
 │   ├── dom.js
-│   ├── index.js
 │   ├── fetch.js
 │   ├── index.js
 │   ├── router.js
