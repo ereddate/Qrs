@@ -1,5 +1,5 @@
 # 项目简介
-`Qrs`是一个轻量级的纯 JavaScript 前端框架，提供了虚拟 DOM、组件化开发、响应式数据绑定、异步组件支持、路由管理、状态管理、AJAX、MOCK、事件总线等功能，同时支持服务端渲染和插槽功能并提供UI样式库。
+`Qrs`是一个轻量级的纯 JavaScript 前端框架，提供了虚拟 DOM、组件化开发、响应式数据绑定、异步组件支持、路由管理、状态管理、AJAX、MOCK、事件总线等功能，同时支持服务端渲染和插槽功能并提供UI样式库及对应的22个js组件。
 
 ## 功能说明
 ### 核心模块
@@ -35,13 +35,17 @@ npm run build
 ```
 ├── core/
 │   ├── dom.js
+│   ├── index.js
 │   ├── fetch.js
 │   ├── index.js
 │   ├── router.js
 │   ├── store.js
 │   ├── typeCheck.js
 │   └── ui/
-│       └── base.scss
+│   │   └── base.scss
+│   └── components/
+│       └── Button.js
+│       └── ...
 ├── dist/
 ├── index.html
 ├── main.js
@@ -51,6 +55,33 @@ npm run build
 ├── src/
 └── vite.config.js
 ```
+
+## js组件列表
+```
+  Button,
+  Card,
+  Input,
+  Modal,
+  Nav,
+  Pagination,
+  Select,
+  Tag,
+  Progress,
+  Table,
+  Message,
+  DatePicker,
+  Upload,
+  Rating,
+  TimePicker,
+  ColorPicker,
+  Switch,
+  Toast,
+  Spinner,
+  Tabs,
+  Notification,
+  Loading,
+```
+- 使用`core/components/index.js`引入使用，简单示例在`main.js`中。
 
 ## 注意事项
 - 请确保 Node.js 环境已正确安装。

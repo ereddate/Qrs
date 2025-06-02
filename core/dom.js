@@ -34,8 +34,9 @@ class Dom {
     });
   }
 
-  static fromComponent(component) {
-    return new Dom(component.el);
+  fromComponent(component) {
+    const newComponent = component.render();
+    return new Dom(newComponent);
   }
 
   toVNode() {
@@ -325,6 +326,10 @@ class Dom {
   appendTo(parent) {
     if (parent instanceof Dom) parent.el?.appendChild(this.el);
     else if (parent instanceof HTMLElement) parent.appendChild(this.el);
+    else if (typeof parent === "string") {
+      const parentEl = document.querySelector(parent);
+      if (parentEl) parentEl.appendChild(this.el);
+    }
     return this;
   }
 

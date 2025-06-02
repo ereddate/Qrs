@@ -132,10 +132,11 @@ function reactive(obj, callback) {
         deps.get(key).add(activeEffect);
       }
       const value = target[key];
-      return Object.is(value) && value !== null ? reactive(value) : value;
+      //return Object.is(value) && value !== null ? reactive(value) : value;
+      return value;
     },
     set(target, key, value) {
-      if (Object.is(target[key], value)) {
+      if (target[key] === value) {
         return true;
       }
       const oldValue = target[key];
@@ -440,7 +441,15 @@ const updateChildren = function (elem, children) {
       newComponent.el = el;
       elem.appendChild(el);
     } else if (String.is(child)) {
-      elem.appendChild(document.createTextNode(child));
+      if (/<[a-z][\s\S]*>/i.test(child)) {
+        // 识别HTML字符串并转换为DOM节点
+        const template = document.createElement("template");
+        template.innerHTML = child.trim();
+        const nodes = template.content.childNodes;
+        updateChildren.bind(this)(elem, Array.from(nodes));
+      } else {
+        elem.appendChild(document.createTextNode(child));
+      }
     } else if (Array.is(child)) {
       updateChildren.bind(this)(elem, child);
     } else if (isTransition(child)) {
@@ -449,8 +458,15 @@ const updateChildren = function (elem, children) {
       nextTick(() => {
         child.triggerTransition();
       });
-    } else {
+    } else if (child instanceof Node) {
+      // 添加 Node 类型检查
       elem.appendChild(child);
+    } else if (
+      typeof child !== "undefined" ||
+      child !== false ||
+      child !== null
+    ) {
+      child && updateChildren.bind(this)(elem, [child.toString()]);
     }
   });
   // 在子节点更新完成，DOM 渲染后执行回调

@@ -11,10 +11,42 @@ import fetch from "./src/ajax/index.js";
 import { RouterView } from "@/core/router.js";
 import router from "./src/router/index.js";
 import Dom from "./core/dom.js";
+import {
+  Button,
+  Card,
+  Input,
+  Nav,
+  Select,
+  Pagination,
+  Tag,
+  Table,
+  Message,
+  DatePicker,
+  Upload,
+  Rating,
+  TimePicker,
+  ColorPicker,
+  Switch,
+  Toast,
+  Spinner,
+  Tabs,
+  Notification,
+  Loading,
+} from "./core/components";
 
 const dom = new Dom("body");
 const testP = document.createElement("p");
 dom.append(testP).find(testP).html("Hello World");
+const pComponent = new Dom(testP)
+  .clone()
+  .html("Hello World[toComponent]")
+  .toComponent();
+
+const newDom = dom.fromComponent(pComponent);
+newDom.clone().html("Hello World[fromComponent]").appendTo("body");
+
+console.log(pComponent, newDom);
+
 // 发送 GET 请求
 fetch
   .request({
@@ -152,9 +184,134 @@ const App = new Component({
           console.log("updated");
         },
       }),
-      MyTransition
+      MyTransition,
+      pComponent,
+      `<h1>Components Demo:</h1>`,
+      `<h2>Button demo:</h2>`,
+      createElem(Button, {
+        type: "primary",
+        text: "点击我",
+        on: {
+          click: () => console.log("按钮点击"),
+        },
+      }),
+      `<h2>Card demo:</h2>`,
+      createElem(Card, {
+        title: "卡片标题",
+        children: "卡片内容",
+      }),
+      `<h2>Input demo:</h2>`,
+      createElem(Input, {
+        placeholder: "请输入...",
+        on: { change: (val) => console.log(val) },
+      }),
+      `<h2>Nav demo:</h2>`,
+      createElem(Nav, {
+        items: [
+          { text: "首页", value: "home" },
+          { text: "关于", value: "about" },
+        ],
+        on: { change: (item) => console.log(item) },
+      }),
+      `<h2>Select demo:</h2>`,
+      createElem(Select, {
+        options: [
+          { text: "选项1", value: 1 },
+          { text: "选项2", value: 2 },
+        ],
+        on: { change: (option) => console.log(option) },
+      }),
+      `<h2>Pagination demo:</h2>`,
+      createElem(Pagination, {
+        total: 100,
+        pageSize: 10,
+        on: { change: (page) => console.log(page) },
+      }),
+      `<h2>Tag demo:</h2>`,
+      createElem(Tag, {
+        type: "primary",
+        text: "重要",
+        on: {
+          click: () => {
+            console.log("tag click!");
+          },
+        },
+      }),
+      `<h2>Table demo:</h2>`,
+      createElem(Table, {
+        columns: [
+          { title: "姓名", key: "name" },
+          { title: "年龄", key: "age" },
+        ],
+        data: [
+          { name: "张三", age: 25 },
+          { name: "李四", age: 30 },
+        ],
+      }),
+      `<h2>DatePicker demo:</h2>`,
+      createElem(DatePicker, {
+        on: { change: (date) => console.log(date) },
+      }),
+      `<h2>Upload demo:</h2>`,
+      createElem(Upload, {
+        on: { change: (file) => console.log(file) },
+      }),
+      `<h2>Rating demo:</h2>`,
+      createElem(Rating, {
+        value: 3,
+        on: { change: (rating) => console.log(rating) },
+      }),
+      `<h2>TimePicker demo:</h2>`,
+      createElem(TimePicker, {
+        on: { change: (time) => console.log(time) },
+      }),
+      `<h2>ColorPicker demo:</h2>`,
+      createElem(ColorPicker, {
+        on: { change: (color) => console.log(color) },
+      }),
+      `<h2>Switch demo:</h2>`,
+      createElem(Switch, {
+        on: { change: (isActive) => console.log(isActive) },
+      }),
+      `<h2>Spinner demo:</h2>`,
+      createElem(Spinner),
+      `<h2>Tabs demo:</h2>`,
+      createElem(Tabs, {
+        tabs: [
+          { title: "标签1", content: "内容1" },
+          { title: "标签2", content: "内容2" },
+        ],
+      })
     );
   },
 });
 
 createApp(App).mount("#app");
+
+// 使用消息提示
+Message.show({
+  type: "success",
+  content: "Message操作成功",
+  duration: 2000,
+});
+
+// 使用Toast
+Toast.show({
+  type: "success",
+  message: "Toast操作成功",
+  duration: 3000,
+  position: "bottom-right",
+});
+
+// 使用通知组件
+Notification.show({
+  type: "success",
+  message: "Notification操作成功",
+  duration: 3000,
+});
+
+// 使用加载组件
+const loading = Loading.show();
+setTimeout(() => {
+  loading();
+}, 2000);
