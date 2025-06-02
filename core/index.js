@@ -93,6 +93,9 @@ function flushJobs() {
       // 例如触发一个全局事件
       const globalUpdateEvent = new CustomEvent("globalUpdateCompleted");
       window.dispatchEvent(globalUpdateEvent);
+      if (Function.is(window.globalAfterQueueJob)) {
+        window.globalAfterQueueJob();
+      }
     });
   }
 }
@@ -129,7 +132,11 @@ function reactive(obj, callback) {
         if (!deps.has(key)) {
           deps.set(key, new Set());
         }
-        deps.get(key).add(activeEffect);
+        const keyDeps = deps.get(key);
+        // 避免重复收集依赖
+        if (!keyDeps.has(activeEffect)) {
+          keyDeps.add(activeEffect);
+        }
       }
       const value = target[key];
       //return Object.is(value) && value !== null ? reactive(value) : value;
@@ -174,6 +181,9 @@ function reactive(obj, callback) {
 }
 
 function computed(getter) {
+  if (!Function.is(getter)) {
+    throw new Error("computed 的参数必须是函数");
+  }
   let value;
   let dirty = true;
   const computedDep = new Set();
@@ -214,6 +224,12 @@ function computed(getter) {
 }
 
 function watch(source, callback) {
+  if (!Function.is(source) && !String.is(source)) {
+    throw new Error("watch 的第一个参数必须是函数或字符串");
+  }
+  if (!Function.is(callback)) {
+    throw new Error("watch 的第二个参数必须是函数");
+  }
   let getter;
   if (Function.is(source)) {
     getter = source;
@@ -326,9 +342,12 @@ class Component {
       // 使用requestAnimationFrame优化DOM更新
       requestAnimationFrame(() => {
         const newEl = this.render();
-        // 比较新旧 DOM 节点，若相同则不更新
-        if (this.el && this.el.isEqualNode(newEl)) {
-          return;
+        // 使用虚拟 DOM 差异比较算法
+        if (this.el) {
+          const isSame = compareNodes(this.el, newEl);
+          if (isSame) {
+            return;
+          }
         }
 
         if (this.el?.parentNode) {
@@ -349,13 +368,28 @@ class Component {
   }
   unmount() {
     this.props?.beforeUnmount?.call(this);
+    // 清理事件监听器
+    if (this.el) {
+      const allElements = this.el.getElementsByTagName("*");
+      for (let i = 0; i < allElements.length; i++) {
+        const element = allElements[i];
+        const eventKeys = Object.keys(element);
+        for (let j = 0; j < eventKeys.length; j++) {
+          const key = eventKeys[j];
+          if (key.startsWith("_") && key.endsWith("Listener")) {
+            const event = key.slice(1, -8);
+            element.removeEventListener(event, element[key]);
+            delete element[key];
+          }
+        }
+      }
+    }
     this.el?.remove();
     this.el = null;
     this.props = null;
     this.props?.unmounted?.call(this);
-    // 在组件卸载完成，DOM 移除后执行回调
     nextTick(() => {
-      if (Function.is(this.props?.afterUnmount)) {
+      if (typeof this.props?.afterUnmount === "function") {
         this.props.afterUnmount.call(this);
       }
     });
@@ -382,7 +416,7 @@ const isVNode = function (obj) {
 
 const updateProps = function (elem, props) {
   const styleObj = {};
-  Object.keys(props).forEach((key) => {
+  safeObjectKeys(props).forEach((key) => {
     const currentValue = key === "style" ? elem.style.cssText : elem[key];
     const newValue = props[key];
     // 若值相同则不更新
@@ -397,7 +431,7 @@ const updateProps = function (elem, props) {
         elem.className = props[key];
         break;
       case "html":
-        elem.innerHTML = props[key];
+        elem.innerHTML = escapeHtml(props[key]);
         break;
       case "show":
         if (props[key]) {
@@ -410,19 +444,24 @@ const updateProps = function (elem, props) {
         elem.appendChild(document.createTextNode(props[key]));
         break;
       case "on":
-        Object.keys(props[key]).forEach((event) => {
-          elem.addEventListener(event, function () {
-            props[key][event].call(props, ...arguments);
-          });
+        safeObjectKeys(props[key]).forEach((event) => {
+          const handler = props[key][event];
+          if (Function.is(handler)) {
+            // 移除旧的事件监听器
+            elem.removeEventListener(event, elem[`_${event}Listener`]);
+            const listener = (e) => handler.call(elem, e);
+            elem[`_${event}Listener`] = listener;
+            elem.addEventListener(event, listener);
+          }
         });
         break;
       default:
-        elem.setAttribute(key, props[key]);
+        elem.setAttribute(key, escapeHtml(newValue));
         break;
     }
   });
   // 一次性更新样式
-  if (Object.keys(styleObj).length > 0) {
+  if (safeObjectKeys(styleObj).length > 0) {
     Object.assign(elem.style, styleObj);
   }
   // 在属性更新完成，DOM 渲染后执行回调
@@ -477,6 +516,58 @@ const updateChildren = function (elem, children) {
   });
 };
 
+// 简单的虚拟 DOM 差异比较函数
+function compareNodes(oldNode, newNode) {
+  if (oldNode.nodeType !== newNode.nodeType) return false;
+  if (oldNode.nodeType === Node.TEXT_NODE) {
+    return oldNode.textContent === newNode.textContent;
+  }
+  if (oldNode.tagName !== newNode.tagName) return false;
+
+  const oldAttrs = oldNode.attributes;
+  const newAttrs = newNode.attributes;
+
+  if (oldAttrs.length !== newAttrs.length) return false;
+
+  for (let i = 0; i < oldAttrs.length; i++) {
+    const attrName = oldAttrs[i].name;
+    if (oldNode.getAttribute(attrName) !== newNode.getAttribute(attrName))
+      return false;
+  }
+
+  if (oldNode.childNodes.length !== newNode.childNodes.length) return false;
+
+  for (let i = 0; i < oldNode.childNodes.length; i++) {
+    if (!compareNodes(oldNode.childNodes[i], newNode.childNodes[i]))
+      return false;
+  }
+
+  return true;
+}
+
+// 深度比较两个对象是否相等
+function deepEqual(obj1, obj2) {
+  if (obj1 === obj2) return true;
+  if (
+    typeof obj1 !== "object" ||
+    obj1 === null ||
+    typeof obj2 !== "object" ||
+    obj2 === null
+  )
+    return false;
+
+  const keys1 = Object.keys(obj1);
+  const keys2 = Object.keys(obj2);
+
+  if (keys1.length !== keys2.length) return false;
+
+  for (const key of keys1) {
+    if (!keys2.includes(key) || !deepEqual(obj1[key], obj2[key])) return false;
+  }
+
+  return true;
+}
+
 class VNode {
   constructor(tag, props, children) {
     this.tag = tag;
@@ -512,13 +603,11 @@ class VNode {
     return elem;
   }
 
-  // 添加shouldUpdate方法
+  // 优化 shouldUpdate 方法
   shouldUpdate(newVNode) {
     if (this.tag !== newVNode.tag) return true;
-    if (JSON.stringify(this.props) !== JSON.stringify(newVNode.props))
-      return true;
-    if (JSON.stringify(this.children) !== JSON.stringify(newVNode.children))
-      return true;
+    if (!deepEqual(this.props, newVNode.props)) return true;
+    if (!deepEqual(this.children, newVNode.children)) return true;
     return false;
   }
 }
@@ -606,17 +695,44 @@ const nextTick = (() => {
   };
 })();
 
+// 转义 HTML 特殊字符，防止 XSS 攻击
+function escapeHtml(unsafe) {
+  if (typeof unsafe !== "string") {
+    unsafe = String(unsafe);
+  }
+  return unsafe
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+// 安全的对象属性遍历
+function safeObjectKeys(obj) {
+  if (Object.prototype.toString.call(obj) !== "[object Object]") {
+    return [];
+  }
+  return Object.keys(obj);
+}
+
 // 服务端渲染相关函数
 function vnodeToHtml(vnode) {
   if (String.is(vnode) || Number.is(vnode)) {
-    return vnode.toString();
+    // 对字符串和数字进行转义
+    return escapeHtml(vnode.toString());
   }
   if (!vnode.tag) {
     return "";
   }
 
-  const attrs = Object.entries(vnode.props || {})
-    .map(([key, value]) => ` ${key}="${value}"`)
+  const attrs = safeObjectKeys(vnode.props || {})
+    .map(([key, value]) => {
+      if (key === "style") {
+        return ` ${key}="${escapeHtml(value.cssText || "")}"`;
+      }
+      return ` ${key}="${escapeHtml(value)}"`;
+    })
     .join("");
 
   const childrenHtml = (vnode.children || [])
@@ -748,7 +864,7 @@ const extend = function (target, source) {
   return Object.assign(target, ...sources);
 };
 
-const name = "qrs";
+const name = "Qrs";
 
 export {
   name,
