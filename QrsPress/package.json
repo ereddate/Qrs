@@ -1,0 +1,27 @@
+{
+  "name": "qrs-press",
+  "version": "1.0.0",
+  "description": "Static site generator with local preview",
+  "main": "src/cli.js",
+  "type": "module",
+  "scripts": {
+    "build": "node src/cli.js build",
+    "serve": "node src/cli.js serve"
+  },
+  "keywords": [
+    "static site generator",
+    "preview server"
+  ],
+  "author": "ereddate",
+  "license": "MIT",
+  "devDependencies": {
+    "commander": "^11.1.0",
+    "fs-extra": "^11.1.1",
+    "glob": "^10.3.10",
+    "http-server": "^14.1.1",
+    "jsdom": "^24.1.0",
+    "marked": "^9.0.0",
+    "sass": "^1.69.5"
+  },
+  "dependencies": {}
+}
