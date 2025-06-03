@@ -2,6 +2,10 @@
 @use "sass:color";
 // 引入 math 模块
 @use "sass:math";
+// 引入 map 模块
+@use "sass:map";
+
+@import url(./iconfont.css);
 
 // 基础变量
 $primary-color: #007bff;
@@ -29,6 +33,35 @@ $breakpoints: (
     lg: 992px,
     xl: 1200px
 );
+// 新增变量
+$default-border-color: #ddd;
+$default-box-shadow-color: rgba(0, 0, 0, 0.1);
+$default-padding: 0.75rem;
+
+// 定义 mixin
+@mixin transition-all {
+    transition: all $transition-duration ease-in-out;
+}
+
+@mixin btn-styles($bg-color, $hover-bg-color, $active-bg-color, $text-color) {
+    color: $text-color;
+    background-color: $bg-color;
+    border-color: $bg-color;
+
+    &:hover {
+        background-color: $hover-bg-color;
+        border-color: $hover-bg-color;
+    }
+
+    &:focus {
+        box-shadow: 0 0 0 0.2rem rgba(math.floor(red($bg-color)), math.floor(green($bg-color)), math.floor(blue($bg-color)), 0.5);
+    }
+
+    &:active {
+        background-color: $active-bg-color;
+        border-color: $active-bg-color;
+    }
+}
 
 // 基础样式
 body {
@@ -69,7 +102,7 @@ body {
     font-size: $font-size-base;
     line-height: 1.5;
     border-radius: $border-radius-base;
-    transition: color $transition-duration ease-in-out, background-color $transition-duration ease-in-out, border-color $transition-duration ease-in-out, box-shadow $transition-duration ease-in-out;
+    @include transition-all;
 
     &:hover {
         text-decoration: none;
@@ -88,128 +121,50 @@ body {
 
     // 主要按钮
     &-primary {
-        color: $white;
-        background-color: $primary-color;
-        border-color: $primary-color;
-
-        &:hover {
-            background-color: color.adjust($primary-color, $lightness: -10%);
-            border-color: color.adjust($primary-color, $lightness: -10%);
-        }
-
-        &:focus {
-            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.5);
-        }
-
-        &:active {
-            background-color: color.adjust($primary-color, $lightness: -15%);
-            border-color: color.adjust($primary-color, $lightness: -15%);
-        }
+        @include btn-styles($primary-color,
+            color.adjust($primary-color, $lightness: -10%),
+            color.adjust($primary-color, $lightness: -15%),
+            $white );
     }
 
     // 次要按钮
     &-secondary {
-        color: $white;
-        background-color: $secondary-color;
-        border-color: $secondary-color;
-
-        &:hover {
-            background-color: color.adjust($secondary-color, $lightness: -10%);
-            border-color: color.adjust($secondary-color, $lightness: -10%);
-        }
-
-        &:focus {
-            box-shadow: 0 0 0 0.2rem rgba(108, 117, 125, 0.5);
-        }
-
-        &:active {
-            background-color: color.adjust($secondary-color, $lightness: -15%);
-            border-color: color.adjust($secondary-color, $lightness: -15%);
-        }
+        @include btn-styles($secondary-color,
+            color.adjust($secondary-color, $lightness: -10%),
+            color.adjust($secondary-color, $lightness: -15%),
+            $white );
     }
 
     // 成功按钮
     &-success {
-        color: $white;
-        background-color: $success-color;
-        border-color: $success-color;
-
-        &:hover {
-            background-color: color.adjust($success-color, $lightness: -10%);
-            border-color: color.adjust($success-color, $lightness: -10%);
-        }
-
-        &:focus {
-            box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.5);
-        }
-
-        &:active {
-            background-color: color.adjust($success-color, $lightness: -15%);
-            border-color: color.adjust($success-color, $lightness: -15%);
-        }
+        @include btn-styles($success-color,
+            color.adjust($success-color, $lightness: -10%),
+            color.adjust($success-color, $lightness: -15%),
+            $white );
     }
 
     // 危险按钮
     &-danger {
-        color: $white;
-        background-color: $danger-color;
-        border-color: $danger-color;
-
-        &:hover {
-            background-color: color.adjust($danger-color, $lightness: -10%);
-            border-color: color.adjust($danger-color, $lightness: -10%);
-        }
-
-        &:focus {
-            box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.5);
-        }
-
-        &:active {
-            background-color: color.adjust($danger-color, $lightness: -15%);
-            border-color: color.adjust($danger-color, $lightness: -15%);
-        }
+        @include btn-styles($danger-color,
+            color.adjust($danger-color, $lightness: -10%),
+            color.adjust($danger-color, $lightness: -15%),
+            $white );
     }
 
     // 警告按钮
     &-warning {
-        color: #212529;
-        background-color: $warning-color;
-        border-color: $warning-color;
-
-        &:hover {
-            background-color: color.adjust($warning-color, $lightness: -10%);
-            border-color: color.adjust($warning-color, $lightness: -10%);
-        }
-
-        &:focus {
-            box-shadow: 0 0 0 0.2rem rgba(255, 193, 7, 0.5);
-        }
-
-        &:active {
-            background-color: color.adjust($warning-color, $lightness: -15%);
-            border-color: color.adjust($warning-color, $lightness: -15%);
-        }
+        @include btn-styles($warning-color,
+            color.adjust($warning-color, $lightness: -10%),
+            color.adjust($warning-color, $lightness: -15%),
+            #212529);
     }
 
     // 信息按钮
     &-info {
-        color: $white;
-        background-color: $info-color;
-        border-color: $info-color;
-
-        &:hover {
-            background-color: color.adjust($info-color, $lightness: -10%);
-            border-color: color.adjust($info-color, $lightness: -10%);
-        }
-
-        &:focus {
-            box-shadow: 0 0 0 0.2rem rgba(23, 162, 184, 0.5);
-        }
-
-        &:active {
-            background-color: color.adjust($info-color, $lightness: -15%);
-            border-color: color.adjust($info-color, $lightness: -15%);
-        }
+        @include btn-styles($info-color,
+            color.adjust($info-color, $lightness: -10%),
+            color.adjust($info-color, $lightness: -15%),
+            $white );
     }
 
     // 按钮尺寸
@@ -228,7 +183,7 @@ body {
     }
 
     // 移动端按钮适当增大点击区域
-    @media (max-width: 576px) {
+    @media (max-width: map.get($breakpoints, sm)) {
         padding: 0.5rem 1rem;
         font-size: $font-size-lg;
     }
@@ -273,9 +228,9 @@ body {
     color: $dark-color;
     background-color: $white;
     background-clip: padding-box;
-    border: 1px solid #ced4da;
+    border: 1px solid $default-border-color;
     border-radius: $border-radius-base;
-    transition: border-color $transition-duration ease-in-out, box-shadow $transition-duration ease-in-out;
+    @include transition-all;
 
     &:focus {
         color: $dark-color;
@@ -286,7 +241,7 @@ body {
     }
 
     &::placeholder {
-        color: #6c757d;
+        color: $secondary-color;
         opacity: 1;
     }
 
@@ -341,7 +296,7 @@ body {
     }
 
     // 移动端输入框适当增大
-    @media (max-width: 576px) {
+    @media (max-width: map.get($breakpoints, sm)) {
         padding: 0.5rem;
         font-size: $font-size-lg;
     }
@@ -360,7 +315,7 @@ body {
     border-radius: $border-radius-base;
 
     .card-header {
-        padding: 0.75rem 1.25rem;
+        padding: $default-padding 1.25rem;
         margin-bottom: 0;
         background-color: rgba(0, 0, 0, 0.03);
         border-bottom: 1px solid rgba(0, 0, 0, 0.125);
@@ -372,13 +327,13 @@ body {
     }
 
     .card-footer {
-        padding: 0.75rem 1.25rem;
+        padding: $default-padding 1.25rem;
         background-color: rgba(0, 0, 0, 0.03);
         border-top: 1px solid rgba(0, 0, 0, 0.125);
     }
 
     // 移动端卡片内边距适当减小
-    @media (max-width: 576px) {
+    @media (max-width: map.get($breakpoints, sm)) {
 
         .card-header,
         .card-body,
@@ -483,7 +438,7 @@ body {
     }
 
     // 移动端导航栏切换为垂直布局
-    @media (max-width: 576px) {
+    @media (max-width: map.get($breakpoints, sm)) {
         flex-direction: column;
         align-items: flex-start;
 
@@ -565,7 +520,7 @@ body {
 // 警报样式
 .alert {
     position: relative;
-    padding: 0.75rem 1.25rem;
+    padding: $default-padding 1.25rem;
     margin-bottom: 1rem;
     border: 1px solid transparent;
     border-radius: $border-radius-base;
@@ -607,7 +562,7 @@ body {
     }
 
     // 移动端警报内边距适当减小
-    @media (max-width: 576px) {
+    @media (max-width: map.get($breakpoints, sm)) {
         padding: 0.5rem;
     }
 }
@@ -630,11 +585,12 @@ body {
     color: $dark-color;
     vertical-align: middle;
     background: $white url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='4' height='5' viewBox='0 0 4 5'%3e%3cpath fill='%23343a40' d='M2 0L0 2h4zm0 5L0 3h4z'/%3e%3c/svg%3e") no-repeat right 0.75rem center/8px 10px;
-    border: 1px solid #ced4da;
+    border: 1px solid $default-border-color;
     border-radius: $border-radius-base;
     -webkit-appearance: none;
     -moz-appearance: none;
     appearance: none;
+    @include transition-all;
 
     &:focus {
         border-color: #80bdff;
@@ -643,7 +599,7 @@ body {
     }
 
     // 移动端下拉选择框适当增大
-    @media (max-width: 576px) {
+    @media (max-width: map.get($breakpoints, sm)) {
         padding: 0.5rem;
         font-size: $font-size-lg;
     }
@@ -654,7 +610,7 @@ body {
 .breadcrumb {
     display: flex;
     flex-wrap: wrap;
-    padding: 0.75rem 1rem;
+    padding: $default-padding 1rem;
     margin-bottom: 1rem;
     list-style: none;
     background-color: #e9ecef;
@@ -667,18 +623,18 @@ body {
             &::before {
                 display: inline-block;
                 padding-right: 0.5rem;
-                color: #6c757d;
+                color: $secondary-color;
                 content: "/";
             }
         }
 
         &.active {
-            color: #6c757d;
+            color: $secondary-color;
         }
     }
 
     // 移动端面包屑导航内边距适当减小
-    @media (max-width: 576px) {
+    @media (max-width: map.get($breakpoints, sm)) {
         padding: 0.5rem;
         font-size: $font-size-sm;
     }
@@ -703,7 +659,7 @@ body {
         margin: 0.5rem;
         pointer-events: none;
 
-        @media (min-width: 576px) {
+        @media (min-width: map.get($breakpoints, sm)) {
             max-width: 500px;
             margin: 1.75rem auto;
         }
@@ -742,12 +698,13 @@ body {
                     font-size: 1.5rem;
                     font-weight: 700;
                     line-height: 1;
-                    color: #000;
+                    color: $black;
                     text-shadow: 0 1px 0 $white;
                     opacity: 0.5;
+                    @include transition-all;
 
                     &:hover {
-                        color: #000;
+                        color: $black;
                         text-decoration: none;
                         opacity: 0.75;
                     }
@@ -776,7 +733,7 @@ body {
     }
 
     // 移动端模态框宽度调整
-    @media (max-width: 576px) {
+    @media (max-width: map.get($breakpoints, sm)) {
         .modal-dialog {
             margin: 0.5rem;
         }
@@ -792,7 +749,7 @@ body {
 
     th,
     td {
-        padding: 0.75rem;
+        padding: $default-padding;
         vertical-align: top;
         border-top: 1px solid #dee2e6;
     }
@@ -828,7 +785,7 @@ body {
     }
 
     // 移动端表格滚动显示
-    @media (max-width: 576px) {
+    @media (max-width: map.get($breakpoints, sm)) {
         display: block;
         width: 100%;
         overflow-x: auto;
@@ -861,7 +818,7 @@ body {
 
         &.disabled {
             .page-link {
-                color: #6c757d;
+                color: $secondary-color;
                 pointer-events: none;
                 cursor: auto;
                 background-color: $white;
@@ -888,6 +845,7 @@ body {
         color: $primary-color;
         background-color: $white;
         border: 1px solid #dee2e6;
+        @include transition-all;
 
         &:hover {
             z-index: 2;
@@ -905,7 +863,7 @@ body {
     }
 
     // 移动端分页按钮适当增大
-    @media (max-width: 576px) {
+    @media (max-width: map.get($breakpoints, sm)) {
         .page-link {
             padding: 0.5rem 1rem;
             font-size: $font-size-lg;
@@ -1125,15 +1083,15 @@ body {
 
 // 新增阴影样式
 .shadow-sm {
-    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
+    box-shadow: 0 0.125rem 0.25rem $default-box-shadow-color !important;
 }
 
 .shadow {
-    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+    box-shadow: 0 0.5rem 1rem $default-box-shadow-color !important;
 }
 
 .shadow-lg {
-    box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.175) !important;
+    box-shadow: 0 1rem 3rem $default-box-shadow-color !important;
 }
 
 // 新增浮动样式
@@ -1281,6 +1239,7 @@ body {
             border: 1px solid transparent;
             border-top-left-radius: $border-radius-base;
             border-top-right-radius: $border-radius-base;
+            @include transition-all;
 
             &:hover {
                 border-color: #e9ecef #e9ecef #dee2e6;
@@ -1510,10 +1469,11 @@ body {
 // 输入框样式
 .input {
     padding: 8px 12px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
+    border: 1px solid $default-border-color;
+    border-radius: $border-radius-base;
     width: 100%;
     box-sizing: border-box;
+    @include transition-all;
 
     &:focus {
         border-color: #3498db;
@@ -1536,15 +1496,15 @@ body {
 }
 
 .modal-container {
-    background: white;
-    border-radius: 4px;
+    background: $white;
+    border-radius: $border-radius-base;
     min-width: 300px;
     max-width: 80%;
 }
 
 .modal-header {
     padding: 12px 16px;
-    border-bottom: 1px solid #ddd;
+    border-bottom: 1px solid $default-border-color;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -1555,17 +1515,23 @@ body {
     border: none;
     font-size: 1.2em;
     cursor: pointer;
+    @include transition-all;
+
+    &:hover {
+        color: darken($dark-color, 10%);
+    }
 }
 
 // 导航样式
 .nav {
     display: flex;
-    border-bottom: 1px solid #ddd;
+    border-bottom: 1px solid $default-border-color;
 }
 
 .nav-item {
     padding: 12px 16px;
     cursor: pointer;
+    @include transition-all;
 
     &.active {
         color: #3498db;
@@ -1579,8 +1545,9 @@ body {
 
     &-selected {
         padding: 8px;
-        border: 1px solid #ddd;
+        border: 1px solid $default-border-color;
         cursor: pointer;
+        @include transition-all;
     }
 
     &-options {
@@ -1588,14 +1555,15 @@ body {
         top: 100%;
         left: 0;
         right: 0;
-        border: 1px solid #ddd;
-        background: white;
+        border: 1px solid $default-border-color;
+        background: $white;
         z-index: 10;
     }
 
     &-option {
         padding: 8px;
         cursor: pointer;
+        @include transition-all;
 
         &:hover {
             background: #f5f5f5;
@@ -1610,10 +1578,11 @@ body {
 
     button {
         padding: 4px 8px;
+        @include transition-all;
 
         &.active {
             background: #3498db;
-            color: white;
+            color: $white;
         }
     }
 }
@@ -1622,12 +1591,13 @@ body {
 .tag {
     display: inline-block;
     padding: 2px 8px;
-    border-radius: 4px;
+    border-radius: $border-radius-base;
     background: #eee;
+    @include transition-all;
 
     &-primary {
         background: #3498db;
-        color: white;
+        color: $white;
     }
 }
 
@@ -1635,12 +1605,12 @@ body {
 .progress {
     height: 8px;
     background: #eee;
-    border-radius: 4px;
+    border-radius: $border-radius-base;
 
     &-bar {
         height: 100%;
         background: #3498db;
-        border-radius: 4px;
+        border-radius: $border-radius-base;
         transition: width 0.3s;
     }
 }
@@ -1657,7 +1627,7 @@ body {
     th,
     td {
         padding: 8px;
-        border: 1px solid #ddd;
+        border: 1px solid $default-border-color;
         text-align: left;
     }
 
@@ -1677,6 +1647,7 @@ body {
     &-node-content {
         padding: 4px;
         cursor: pointer;
+        @include transition-all;
 
         &:hover {
             background: #f5f5f5;
@@ -1701,22 +1672,22 @@ body {
     left: 50%;
     transform: translateX(-50%);
     padding: 8px 16px;
-    border-radius: 4px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border-radius: $border-radius-base;
+    box-shadow: 0 2px 8px $default-box-shadow-color;
 
     &.success {
         background: #4CAF50;
-        color: white;
+        color: $white;
     }
 
     &.error {
         background: #f44336;
-        color: white;
+        color: $white;
     }
 
     &.info {
         background: #2196F3;
-        color: white;
+        color: $white;
     }
 }
 
@@ -1726,8 +1697,8 @@ body {
 
     .date-input {
         padding: 8px;
-        border: 1px solid #ddd;
-        border-radius: 4px;
+        border: 1px solid $default-border-color;
+        border-radius: $border-radius-base;
     }
 
     .calendar {
@@ -1735,11 +1706,11 @@ body {
         top: 100%;
         left: 0;
         width: 240px;
-        background: white;
-        border: 1px solid #ddd;
-        border-radius: 4px;
+        background: $white;
+        border: 1px solid $default-border-color;
+        border-radius: $border-radius-base;
         padding: 8px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 2px 8px $default-box-shadow-color;
         z-index: 10;
 
         &-header {
@@ -1769,11 +1740,11 @@ body {
                 text-align: center;
                 padding: 4px;
                 cursor: pointer;
-                border-radius: 4px;
+                border-radius: $border-radius-base;
 
                 &.selected {
                     background: #3498db;
-                    color: white;
+                    color: $white;
                 }
 
                 &:hover:not(.empty) {
@@ -1797,8 +1768,13 @@ body {
     .upload-btn {
         padding: 8px 16px;
         background: #f5f5f5;
-        border: 1px dashed #ddd;
+        border: 1px dashed $default-border-color;
         cursor: pointer;
+        @include transition-all;
+
+        &:hover {
+            background: lighten(#f5f5f5, 5%);
+        }
     }
 }
 
@@ -1808,6 +1784,7 @@ body {
         font-size: 24px;
         color: #ccc;
         cursor: pointer;
+        @include transition-all;
 
         &.active {
             color: #ffc107;
@@ -1821,15 +1798,15 @@ body {
 
     .time-input {
         padding: 8px;
-        border: 1px solid #ddd;
+        border: 1px solid $default-border-color;
     }
 
     .time-panel {
         position: absolute;
         top: 100%;
         left: 0;
-        background: white;
-        border: 1px solid #ddd;
+        background: $white;
+        border: 1px solid $default-border-color;
         padding: 8px;
         z-index: 10;
 
@@ -1853,8 +1830,9 @@ body {
     .color-preview {
         width: 24px;
         height: 24px;
-        border: 1px solid #ddd;
+        border: 1px solid $default-border-color;
         cursor: pointer;
+        @include transition-all;
     }
 
     input[type="color"] {
@@ -1882,7 +1860,7 @@ body {
         left: 2px;
         width: 16px;
         height: 16px;
-        background: white;
+        background: $white;
         border-radius: 50%;
         transition: transform 0.3s;
     }
@@ -1896,9 +1874,9 @@ body {
 .toast {
     position: fixed;
     padding: 12px 24px;
-    border-radius: 4px;
+    border-radius: $border-radius-base;
     background: #333;
-    color: white;
+    color: $white;
     opacity: 1;
     transition: opacity 0.3s;
     z-index: 9999;
@@ -1995,12 +1973,13 @@ body {
 .tabs {
     &-header {
         display: flex;
-        border-bottom: 1px solid #ddd;
+        border-bottom: 1px solid $default-border-color;
     }
 
     .tab-header {
         padding: 8px 16px;
         cursor: pointer;
+        @include transition-all;
 
         &.active {
             border-bottom: 2px solid #2196F3;
@@ -2018,10 +1997,10 @@ body {
     top: 20px;
     right: 20px;
     padding: 12px 24px;
-    border-radius: 4px;
+    border-radius: $border-radius-base;
     background: #333;
-    color: white;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    color: $white;
+    box-shadow: 0 2px 10px $default-box-shadow-color;
     opacity: 1;
     transition: opacity 0.3s;
     z-index: 9999;

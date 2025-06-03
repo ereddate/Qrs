@@ -18,6 +18,12 @@ export default defineConfig({
     cors: true, // 允许跨域
     host: "0.0.0.0", // 监听所有地址，方便局域网内访问
   },
+  css: {
+    postcss: {
+      // 如果你采用 .cjs 方案，路径为 'postcss.config.cjs'
+      configFile: "./postcss.config.js",
+    },
+  },
   resolve: {
     extensions: [".js"],
     // 配置路径别名

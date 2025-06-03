@@ -228,6 +228,8 @@ const RouterLink = new Component({
               } else {
                 router.push(this.props.to);
               }
+            } else {
+              window.location.href = this.props.to;
             }
           },
         },
