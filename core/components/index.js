@@ -25,6 +25,15 @@ import Slider from "./Slider";
 import Search from "./Search";
 import Radio from "./Radio";
 import Dialog from "./Dialog";
+import DropdownMenu from "./DropdownMenu";
+import FloatingPanel from "./FloatingPanel";
+import Badge from "./Badge";
+import Divider from "./Divider";
+import Skeleton from "./Skeleton";
+import Steps from "./Steps";
+import Tabbar from "./Tabbar";
+import NavBar from "./NavBar";
+import BackTop from "./BackTop";
 
 export {
   Button,
@@ -54,4 +63,13 @@ export {
   Search,
   Radio,
   Dialog,
+  DropdownMenu,
+  FloatingPanel,
+  Badge,
+  Divider,
+  Skeleton,
+  Steps,
+  Tabbar,
+  NavBar,
+  BackTop,
 };
