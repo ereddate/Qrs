@@ -13,7 +13,6 @@ class VNode {
 
   render(document) {
     const globalDocument = document || window.document;
-    const that = this;
 
     // 添加缓存机制
     if (this._cachedEl) return this._cachedEl;
@@ -23,6 +22,8 @@ class VNode {
       const el = newInstance.render();
       this.el = el;
       return el;
+    } else if (!String.is(this.tag)) {
+      return;
     }
     const elem =
       this.tag === "text"
@@ -108,10 +109,19 @@ const updateProps = function (elem, props) {
 
 const updateChildren = function (elem, children) {
   children.forEach((child) => {
-    if (isComponent(child) || isVNode(child)) {
+    if (isComponent(child)) {
       const newComponent = new child.constructor(child.props);
-      const el = newComponent.render();
+      const rElem = newComponent.render();
+      const el = isVNode(rElem) ? rElem.render() : rElem;
       newComponent.el = el;
+      elem.appendChild(el);
+    } else if (isVNode(child)) {
+      const newVnode = new child.constructor(
+        child.tag,
+        child.props,
+        child.children
+      );
+      const el = newVnode.render();
       elem.appendChild(el);
     } else if (String.is(child)) {
       if (/<[a-z][\s\S]*>/i.test(child)) {
@@ -160,8 +170,9 @@ const createElem = (tag, props, ...children) => {
     return elem;
   }
   const vnode = createVnode(tag, props, children);
-  const elem = vnode.render();
-  return elem;
+  /* const elem = vnode.render();
+  return elem; */
+  return vnode;
 };
 
 const createVnode = (tag, props, children, key = null) => {

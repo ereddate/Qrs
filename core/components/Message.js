@@ -13,9 +13,11 @@ const Message = new Component({
 // 静态方法
 Message.show = (options) => {
   const msg = new Message.constructor({ ...Message.props, ...options });
-  document.body.appendChild(msg.render());
+  const el = msg.render();
+  msg.el = el;
+  document.body.appendChild(el);
   setTimeout(() => {
-    msg.render().remove();
+    msg.el.remove();
   }, options.duration || 3000);
 };
 

@@ -12,7 +12,8 @@ function createApp(rootComponent) {
     mount(rootContainer, document) {
       const globalDocument = document || window.document;
       rootContainer = query(rootContainer, globalDocument);
-      const rootEl = rootComponent.render();
+      const rElem = rootComponent.render();
+      const rootEl = isVNode(rElem) ? rElem.render() : rElem;
       rootComponent.el = rootEl;
       rootContainer.appendChild(rootEl);
       // 在应用挂载完成，DOM 渲染后执行回调

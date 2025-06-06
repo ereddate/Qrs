@@ -1,7 +1,7 @@
 import { reactive, computed, watch } from "./reactive.js";
 import { nextTick } from "./queue.js";
 import compileTemplate from "./templateCompiler.js";
-import { createVnode } from "./vnode.js";
+import { createVnode, isVNode } from "./vnode.js";
 
 class Component {
   constructor(props, document) {
@@ -59,7 +59,8 @@ class Component {
 
   render() {
     this.props?.beforeMount?.call(this);
-    const el = this.props?.render.bind(this)(this.$slots);
+    const vnode = this.props?.render.bind(this)(this.$slots);
+    const el = isVNode(vnode) ? vnode.render(this.document) : vnode;
     this.props?.mounted?.call(this);
     // 在组件挂载完成，DOM 渲染后执行回调
     nextTick(() => {
@@ -79,18 +80,17 @@ class Component {
       this.props?.beforeUpdate?.call(this);
       // 使用requestAnimationFrame优化DOM更新
       requestAnimationFrame(() => {
-        const newEl = this.render();
+        const newVnode = this.render();
+        const newEl = isVNode(newVnode)
+          ? newVnode.render(this.document)
+          : newVnode;
         // 比较新旧 DOM 节点，若相同则不更新
         if (this.el && this.el.isEqualNode(newEl)) {
           return;
         }
 
-        if (this.el?.parentNode) {
-          this.el.parentNode.replaceChild(newEl, this.el);
-        } else {
-          this.el?.replaceWith(newEl);
-        }
-        this.el = newEl;
+        updateProps.bind(this)(this.el, newEl);
+        updateChildren.bind(this)(this.el, newEl);
         this.props?.updated?.call(this);
       });
     });
@@ -140,6 +140,51 @@ class Component {
     };
   }
 }
+
+// 优化属性更新逻辑
+const updateProps = (oldEl, newEl) => {
+  if (!oldEl || !newEl) return;
+  const oldAttrs = {};
+  for (let i = 0; i < oldEl.attributes.length; i++) {
+    const attr = oldEl.attributes[i];
+    oldAttrs[attr.name] = attr.value;
+  }
+
+  for (let i = 0; i < newEl.attributes.length; i++) {
+    const attr = newEl.attributes[i];
+    if (oldAttrs[attr.name] !== attr.value) {
+      oldEl.setAttribute(attr.name, attr.value);
+    }
+    delete oldAttrs[attr.name];
+  }
+
+  // 移除旧元素中多余的属性
+  Object.keys(oldAttrs).forEach((attrName) => {
+    oldEl.removeAttribute(attrName);
+  });
+};
+
+// 优化子节点更新逻辑
+const updateChildren = (oldEl, newEl) => {
+  if (!oldEl || !newEl) return;
+  const oldChildren = Array.from(oldEl.childNodes);
+  const newChildren = Array.from(newEl.childNodes);
+
+  // 处理新增和更新节点
+  newChildren.forEach((newChild, index) => {
+    const oldChild = oldChildren[index];
+    if (!oldChild) {
+      oldEl.appendChild(newChild);
+    } else if (!oldChild.isEqualNode(newChild)) {
+      oldEl.replaceChild(newChild, oldChild);
+    }
+  });
+
+  // 移除多余的旧节点
+  while (oldChildren.length > newChildren.length) {
+    oldEl.removeChild(oldChildren.pop());
+  }
+};
 
 const isComponent = function (obj) {
   return obj instanceof Component;

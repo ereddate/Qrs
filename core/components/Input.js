@@ -18,7 +18,7 @@ const Input = new Component({
       placeholder: this.props.placeholder,
       value: this.data.value,
       on: {
-        change: (e) => (this.data.value = e.target.value),
+        input: (e) => (this.data.value = e.target.value),
       },
     });
   },
