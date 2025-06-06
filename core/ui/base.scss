@@ -2100,3 +2100,228 @@ body {
         font-size: 16px;
     }
 }
+
+.slider {
+    position: relative;
+    height: 4px;
+    margin: 16px 0;
+    cursor: pointer;
+
+    &__track {
+        position: relative;
+        height: 100%;
+        background-color: #e5e5e5;
+        border-radius: 2px;
+    }
+
+    &__progress {
+        position: absolute;
+        height: 100%;
+        background-color: #1989fa;
+        border-radius: 2px;
+        transition: width 0.2s;
+    }
+
+    &__button {
+        position: absolute;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        width: 16px;
+        height: 16px;
+        background-color: #fff;
+        border: 2px solid #1989fa;
+        border-radius: 50%;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        transition: left 0.2s;
+
+        &.dragging {
+            box-shadow: 0 0 0 4px rgba(25, 137, 250, 0.2);
+        }
+    }
+
+    &.disabled {
+        cursor: not-allowed;
+
+        & .slider__track {
+            background-color: #f0f0f0;
+        }
+
+        & .slider__progress {
+            background-color: #cccccc;
+        }
+
+        & .slider__button {
+            border-color: #cccccc;
+            background-color: #f5f5f5;
+        }
+    }
+}
+
+.search {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    background-color: #f2f2f2;
+
+    &__input-container {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        background-color: #fff;
+        border-radius: 4px;
+        padding: 5px 10px;
+    }
+
+    &__icon {
+        width: 20px;
+        margin-right: 5px;
+        background-image: url('path/to/search-icon.png');
+        background-size: cover;
+    }
+
+    &__input {
+        flex: 1;
+        border: none;
+        outline: none;
+        font-size: 14px;
+    }
+
+    &__clear {
+        width: 20px;
+        margin-left: 5px;
+        background-image: url('path/to/clear-icon.png');
+        background-size: cover;
+        cursor: pointer;
+    }
+
+    &__cancel {
+        margin-left: 10px;
+        border: none;
+        background: none;
+        color: #07c160;
+        font-size: 14px;
+        cursor: pointer;
+    }
+
+    &.disabled {
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+}
+
+.radio {
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+
+    &__input {
+        position: absolute;
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    &__icon {
+        width: 18px;
+        height: 18px;
+        border: 1px solid #ccc;
+        border-radius: 50%;
+        margin-right: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+
+        &::after {
+            content: '';
+            width: 10px;
+            height: 10px;
+            background-color: transparent;
+            border-radius: 50%;
+            transition: all 0.2s;
+        }
+    }
+
+    &.checked {
+        .radio__icon {
+            border-color: #1989fa;
+            background-color: #1989fa;
+
+            &::after {
+                background-color: #fff;
+            }
+        }
+    }
+
+    &.disabled {
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+
+    &__label {
+        font-size: 14px;
+    }
+}
+
+.dialog-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+
+    &.hidden {
+        display: none;
+    }
+}
+
+.dialog-container {
+    background-color: #fff;
+    border-radius: 8px;
+    width: 80%;
+    max-width: 400px;
+    overflow: hidden;
+}
+
+.dialog-title {
+    padding: 16px;
+    text-align: center;
+    font-size: 18px;
+    font-weight: bold;
+    border-bottom: 1px solid #eee;
+}
+
+.dialog-content {
+    padding: 16px;
+    font-size: 14px;
+}
+
+.dialog-footer {
+    display: flex;
+    border-top: 1px solid #eee;
+}
+
+.dialog-cancel,
+.dialog-confirm {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    background-color: transparent;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.dialog-cancel {
+    border-right: 1px solid #eee;
+    color: #666;
+}
+
+.dialog-confirm {
+    color: #1989fa;
+}

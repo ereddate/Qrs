@@ -20,6 +20,11 @@ import Spinner from "./Spinner";
 import Tabs from "./Tabs";
 import Notification from "./Notification";
 import Loading from "./Loading";
+import Stepper from "./Stepper";
+import Slider from "./Slider";
+import Search from "./Search";
+import Radio from "./Radio";
+import Dialog from "./Dialog";
 
 export {
   Button,
@@ -44,4 +49,9 @@ export {
   Tabs,
   Notification,
   Loading,
+  Stepper,
+  Slider,
+  Search,
+  Radio,
+  Dialog,
 };

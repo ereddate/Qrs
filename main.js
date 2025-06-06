@@ -32,6 +32,11 @@ import {
   Tabs,
   Notification,
   Loading,
+  Stepper,
+  Slider,
+  Search,
+  Radio,
+  Dialog,
 } from "./core/components";
 
 const dom = new Dom("body");
@@ -173,6 +178,12 @@ const el = new Component({
 });
 
 const App = new Component({
+  data() {
+    return {
+      selectedValue: "option1",
+      dialogVisible: false,
+    };
+  },
   render() {
     return createElem(
       "div",
@@ -281,6 +292,106 @@ const App = new Component({
           { title: "标签1", content: "内容1" },
           { title: "标签2", content: "内容2" },
         ],
+      }),
+      `<h2>Stepper demo:</h2>`,
+      createElem(Stepper, {
+        value: 5, // 初始值
+        min: 0, // 最小值
+        max: 10, // 最大值
+        step: 1, // 步长
+        on: {
+          change: (value) => {
+            console.log("当前数值为:", value);
+          },
+        },
+      }),
+      `<h2>Slider demo:</h2>`,
+      createElem(Slider, {
+        value: 50, // 初始值
+        min: 0, // 最小值
+        max: 100, // 最大值
+        step: 5, // 步长
+        on: {
+          change: (value) => {
+            console.log("当前值为:", value);
+          },
+        },
+      }),
+      `<h2>Search demo:</h2>`,
+      createElem(Search, {
+        placeholder: "请输入商品名称",
+        showCancel: true,
+        cancelText: "取消",
+        on: {
+          input: (value) => {
+            console.log("输入内容:", value);
+          },
+          search: (value) => {
+            console.log("开始搜索:", value);
+          },
+          clear: () => {
+            console.log("输入内容已清空");
+          },
+          cancel: () => {
+            console.log("已取消搜索");
+          },
+        },
+      }),
+      `<h2>Radio demo:</h2>`,
+      createElem(Radio, {
+        label: "选项1",
+        value: "option1",
+        checked: this.data.selectedValue === "option1",
+        on: {
+          change: (checked, value) => {
+            if (checked) {
+              this.data.selectedValue = value;
+              console.log("选中值:", value);
+            }
+          },
+        },
+      }),
+      createElem(Radio, {
+        label: "选项2",
+        value: "option2",
+        checked: this.data.selectedValue === "option2",
+        on: {
+          change: (checked, value) => {
+            if (checked) {
+              this.data.selectedValue = value;
+              console.log("选中值:", value);
+            }
+          },
+        },
+      }),
+      `<h2>Dialog demo:</h2>`,
+      createElem(
+        "button",
+        {
+          class: "show-dialog-btn",
+          on: {
+            click: () => {
+              this.data.dialogVisible = this.data.dialogVisible ? false : true;
+            },
+          },
+        },
+        "显示对话框"
+      ),
+      createElem(Dialog, {
+        visible: this.data.dialogVisible,
+        title: "提示",
+        content: "确认要执行此操作吗？",
+        showCancelButton: true,
+        on: {
+          confirm: () => {
+            this.data.dialogVisible = false;
+            console.log("用户点击了确认");
+          },
+          cancel: () => {
+            this.data.dialogVisible = false;
+            console.log("用户点击了取消");
+          },
+        },
       })
     );
   },
