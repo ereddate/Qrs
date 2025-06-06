@@ -1,5 +1,5 @@
 # 项目简介
-`Qrs`是一个轻量级的纯 JavaScript 前端框架，提供了虚拟 DOM、组件化开发、响应式数据绑定、异步组件支持、路由管理、状态管理、AJAX、MOCK、事件总线等功能，同时支持服务端渲染和插槽功能，并提供UI样式库及对应的22个js组件、微应用支持、QrsPress静态网站生成器。。
+`Qrs`是一个轻量级的纯 JavaScript 前端框架，提供了虚拟 DOM、组件化开发、响应式数据绑定、异步组件支持、路由管理、状态管理、AJAX、MOCK、事件总线等功能，同时支持服务端渲染和插槽功能，并提供UI样式库及对应的36个js组件、微应用支持、QrsPress静态网站生成器。。
 
 ## 功能说明
 ### 核心模块
@@ -86,6 +86,7 @@ npm run build
   Tabs,
   Notification,
   Loading,
+  ...
 ```
 - 使用`core/components/index.js`引入使用，简单示例在`main.js`中。
 
