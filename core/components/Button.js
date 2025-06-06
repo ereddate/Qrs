@@ -1,4 +1,5 @@
 import { Component, createElem } from "../index.js";
+import "../ui/base.scss";
 
 const Button = new Component({
   render() {

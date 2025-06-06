@@ -1,12 +1,41 @@
 import { Component, reactive, createElem } from "./index.js";
 
+// 解析路由参数
+function parseParams(path, routePath) {
+  const pathSegments = path.split("/").filter(Boolean);
+  const routeSegments = routePath.split("/").filter(Boolean);
+  const params = {};
+
+  routeSegments.forEach((segment, index) => {
+    if (segment.startsWith(":")) {
+      const paramName = segment.slice(1);
+      params[paramName] = pathSegments[index];
+    }
+  });
+
+  return params;
+}
+
+// 解析查询参数
+function parseQuery(queryString) {
+  const query = {};
+  if (queryString) {
+    queryString
+      .substring(1)
+      .split("&")
+      .forEach((param) => {
+        const [key, value] = param.split("=");
+        query[decodeURIComponent(key)] = decodeURIComponent(value || "");
+      });
+  }
+  return query;
+}
+
 // 定义 Router 类
 class Router {
   constructor(options) {
     this.routes = options.routes || [];
-    // 新增模式属性，默认为 history
     this.mode = options.mode || "hash";
-    // 初始化时获取当前路径，如果没有路径则默认使用 "/"
     this.initialPath =
       this.mode === "hash"
         ? window.location.hash.slice(1) || "/"
@@ -16,73 +45,147 @@ class Router {
         this.mode === "hash"
           ? window.location.hash.slice(1)
           : window.location.pathname,
+      params: {},
+      meta: {},
+      query: parseQuery(window.location.search),
     });
-    // 存储全局前置守卫
     this.beforeEachGuards = [];
-    // 存储全局后置钩子
+    this.beforeResolveGuards = [];
     this.afterEachHooks = [];
+    this.routeGuards = {};
 
-    // 根据模式监听不同事件
     if (this.mode === "hash") {
       window.addEventListener("hashchange", () => {
-        this.handleRouteChange(window.location.hash.slice(1));
+        this.handleRouteChange(
+          window.location.hash.slice(1),
+          parseQuery(window.location.search)
+        );
       });
     } else {
-      window.addEventListener("popstate", () => {
-        this.handleRouteChange(window.location.pathname);
+      window.addEventListener("popstate", async () => {
+        const newPath = window.location.pathname;
+        const newQuery = parseQuery(window.location.search);
+        await this.handleRouteChange(newPath, newQuery);
       });
     }
 
     this.update = null;
-    // 新增路由元信息支持
     this.meta = options.meta || {};
   }
 
   init() {
-    this.push(this.initialPath);
+    this.push(this.initialPath, parseQuery(window.location.search));
   }
 
-  // 添加全局前置守卫
   beforeEach(guard) {
     this.beforeEachGuards.push(guard);
   }
 
-  // 添加全局后置钩子
+  beforeResolve(guard) {
+    this.beforeResolveGuards.push(guard);
+  }
+
   afterEach(hook) {
     this.afterEachHooks.push(hook);
   }
 
-  // 处理路由变化，包含路由守卫逻辑
-  async handleRouteChange(toPath) {
+  async handleRouteChange(toPath, query) {
     try {
       const fromPath = this.current.path;
       const toRoute = this.match(toPath);
       const fromRoute = this.match(fromPath);
 
-      // 新增导航取消标志
+      if (!toRoute) {
+        throw new Error(`Route not found for path: ${toPath}`);
+      }
+
+      const params = parseParams(toPath, toRoute.path);
+      const fromParams = parseParams(fromPath, fromRoute.path);
+
       let isNavigationCancelled = false;
 
       this.update && this.update(toPath);
 
-      // 并行执行全局前置守卫
-      const guardResults = await Promise.all(
+      const globalBeforeEachResults = await Promise.all(
         this.beforeEachGuards.map(async (guard) => {
           try {
-            return await guard(fromRoute, toRoute);
+            return await guard(
+              {
+                path: fromPath,
+                params: fromParams,
+                meta: fromRoute.meta,
+                query: this.current.query,
+              },
+              { path: toPath, params, meta: toRoute.meta, query }
+            );
           } catch (error) {
-            console.error("Route guard error:", error);
+            console.error("Global route guard error:", error);
             return false;
           }
         })
       );
 
-      for (const result of guardResults) {
+      for (const result of globalBeforeEachResults) {
         if (result === false) {
           isNavigationCancelled = true;
           return;
-        } else if (String.is(result)) {
+        } else if (typeof result === "string") {
           if (!isNavigationCancelled) {
-            this.push(result);
+            this.push(result, query);
+            isNavigationCancelled = true;
+          }
+          return;
+        }
+      }
+
+      if (toRoute.beforeEnter) {
+        const routeBeforeEnterResult = await toRoute.beforeEnter(
+          { path: toPath, params, meta: toRoute.meta, query },
+          {
+            path: fromPath,
+            params: fromParams,
+            meta: fromRoute.meta,
+            query: this.current.query,
+          }
+        );
+        if (routeBeforeEnterResult === false) {
+          isNavigationCancelled = true;
+          return;
+        } else if (typeof routeBeforeEnterResult === "string") {
+          if (!isNavigationCancelled) {
+            this.push(routeBeforeEnterResult, query);
+            isNavigationCancelled = true;
+          }
+          return;
+        }
+      }
+
+      const globalBeforeResolveResults = await Promise.all(
+        this.beforeResolveGuards.map(async (guard) => {
+          try {
+            return await guard(
+              {
+                path: fromPath,
+                params: fromParams,
+                meta: fromRoute.meta,
+                query: this.current.query,
+              },
+              { path: toPath, params, meta: toRoute.meta, query }
+            );
+          } catch (error) {
+            console.error("Global resolve guard error:", error);
+            return false;
+          }
+        })
+      );
+
+      for (const result of globalBeforeResolveResults) {
+        if (result === false) {
+          isNavigationCancelled = true;
+          return;
+        } else if (typeof result === "string") {
+          if (!isNavigationCancelled) {
+            this.push(result, query);
             isNavigationCancelled = true;
           }
           return;
@@ -91,12 +194,22 @@ class Router {
 
       if (!isNavigationCancelled) {
         this.current.path = toPath;
+        this.current.params = params;
+        this.current.meta = toRoute.meta;
+        this.current.query = query;
       }
 
-      // 执行全局后置钩子
       this.afterEachHooks.forEach((hook) => {
         try {
-          hook(fromRoute, toRoute);
+          hook(
+            {
+              path: fromPath,
+              params: fromParams,
+              meta: fromRoute.meta,
+              query: this.current.query,
+            },
+            { path: toPath, params, meta: toRoute.meta, query }
+          );
         } catch (error) {
           console.error("Route hook error:", error);
         }
@@ -106,33 +219,119 @@ class Router {
     }
   }
 
-  // 路由匹配方法，支持 404 路由
   match(path) {
-    const matchedRoute = this.routes.find((route) => route.path === path);
+    let matchedRoute = this.routes.find((route) => {
+      if (route.alias && route.alias === path) {
+        return true;
+      }
+      const routeSegments = route.path.split("/").filter(Boolean);
+      const pathSegments = path.split("/").filter(Boolean);
+
+      if (routeSegments.length !== pathSegments.length) {
+        return false;
+      }
+
+      for (let i = 0; i < routeSegments.length; i++) {
+        if (
+          !routeSegments[i].startsWith(":") &&
+          routeSegments[i] !== pathSegments[i]
+        ) {
+          return false;
+        }
+      }
+      return true;
+    });
+
     return matchedRoute || this.routes.find((route) => route.path === "*");
   }
 
-  // 编程式导航：push 方法
-  async push(path) {
-    await this.handleRouteChange(path);
+  matchByName(name) {
+    return this.routes.find((route) => route.name === name);
+  }
+
+  async push(pathOrName, query = {}) {
+    let path;
+    if (typeof pathOrName === "string") {
+      path = pathOrName;
+    } else if (typeof pathOrName === "object" && pathOrName.name) {
+      const route = this.matchByName(pathOrName.name);
+      if (route) {
+        path = route.path;
+        if (pathOrName.params) {
+          Object.entries(pathOrName.params).forEach(([key, value]) => {
+            path = path.replace(`:${key}`, value);
+          });
+        }
+      } else {
+        throw new Error(`Route with name ${pathOrName.name} not found`);
+      }
+    }
+    const queryString = Object.entries(query)
+      .map(
+        ([key, value]) =>
+          `${encodeURIComponent(key)}=${encodeURIComponent(value)}`
+      )
+      .join("&");
+    const fullPath = queryString ? `${path}?${queryString}` : path;
+    await this.handleRouteChange(path, query);
     if (this.mode === "hash") {
-      window.location.hash = path;
+      window.location.hash = fullPath;
     } else {
-      window.history.pushState({}, "", path);
+      window.history.pushState({}, "", fullPath);
     }
   }
 
-  // 编程式导航：replace 方法
-  async replace(path) {
-    await this.handleRouteChange(path);
+  async replace(pathOrName, query = {}) {
+    let path;
+    if (typeof pathOrName === "string") {
+      path = pathOrName;
+    } else if (typeof pathOrName === "object" && pathOrName.name) {
+      const route = this.matchByName(pathOrName.name);
+      if (route) {
+        path = route.path;
+        if (pathOrName.params) {
+          Object.entries(pathOrName.params).forEach(([key, value]) => {
+            path = path.replace(`:${key}`, value);
+          });
+        }
+      } else {
+        throw new Error(`Route with name ${pathOrName.name} not found`);
+      }
+    }
+    const queryString = Object.entries(query)
+      .map(
+        ([key, value]) =>
+          `${encodeURIComponent(key)}=${encodeURIComponent(value)}`
+      )
+      .join("&");
+    const fullPath = queryString ? `${path}?${queryString}` : path;
+    await this.handleRouteChange(path, query);
     if (this.mode === "hash") {
-      window.location.replace(`#${path}`);
+      window.location.replace(`#${fullPath}`);
     } else {
-      window.history.replaceState({}, "", path);
+      window.history.replaceState({}, "", fullPath);
     }
   }
 
-  // 路由懒加载方法
+  // 类似 vue-router 的 go 方法，在浏览器历史记录中前进或后退指定数量的步骤
+  go(steps) {
+    if (typeof steps !== "number") {
+      console.error("go 方法需要传入一个数字类型的参数");
+      return;
+    }
+    window.history.go(steps);
+  }
+
+  // 类似 vue-router 的 back 方法，在浏览器历史记录中后退一步
+  back() {
+    this.go(-1);
+  }
+
+  // 类似 vue-router 的 forward 方法，在浏览器历史记录中前进一步
+  forward() {
+    this.go(1);
+  }
+
   static lazyLoad(componentImport) {
     return {
       async render() {
@@ -150,7 +349,6 @@ const RouterView = new Component({
       currentComponent: null,
       prevComponent: null,
       isEntering: false,
-      // 新增过渡动画状态
       isLeaving: false,
     };
   },
@@ -167,7 +365,6 @@ const RouterView = new Component({
       (this.props.router.update = (toPath) => {
         const matchedRoute = that.props.router?.match(toPath);
         if (matchedRoute) {
-          // 开始离开动画
           that.isLeaving = true;
           that.update();
 
@@ -177,7 +374,6 @@ const RouterView = new Component({
           that.isEntering = true;
           that.update();
 
-          // 等待进入动画完成
           setTimeout(() => {
             that.isEntering = false;
           }, 300);
@@ -202,7 +398,7 @@ const RouterView = new Component({
 const RouterLink = new Component({
   props: {
     to: {
-      type: String,
+      type: [String, Object],
       required: true,
     },
     replace: {
@@ -211,8 +407,23 @@ const RouterLink = new Component({
     },
   },
   render() {
-    const href =
-      this.props?.router?.mode === "hash" ? `#${this.props.to}` : this.props.to;
+    let path;
+    if (typeof this.props.to === "string") {
+      path = this.props.to;
+    } else if (typeof this.props.to === "object" && this.props.to.name) {
+      const route = this.props.router?.matchByName(this.props.to.name);
+      if (route) {
+        path = route.path;
+        if (this.props.to.params) {
+          Object.entries(this.props.to.params).forEach(([key, value]) => {
+            path = path.replace(`:${key}`, value);
+          });
+        }
+      } else {
+        path = "#";
+      }
+    }
+    const href = this.props?.router?.mode === "hash" ? `#${path}` : path;
     return createElem(
       "a",
       {
@@ -229,12 +440,11 @@ const RouterLink = new Component({
                 router.push(this.props.to);
               }
             } else {
-              window.location.href = this.props.to;
+              window.location.href = path;
             }
           },
         },
       },
-      // 渲染子元素
       this.$slots.default
     );
   },
