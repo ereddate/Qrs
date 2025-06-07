@@ -1,8 +1,13 @@
-import { reactive, computed, watch } from "./reactive.js";
+import { reactive, computed, watch, ref, isRef, toRefs } from "./reactive.js";
 import { nextTick } from "./queue.js";
 import compileTemplate from "./templateCompiler.js";
 import { createVnode, isVNode } from "./vnode.js";
+import { EventBus } from "./eventBus.js";
 
+// 定义全局的事件总线
+const eventBus = new EventBus();
+
+// 组件类
 class Component {
   constructor(props, document) {
     const that = this;
@@ -18,6 +23,24 @@ class Component {
       }
     );
     this.document = document;
+
+    // 处理 setup 函数
+    if (props.setup) {
+      this.setupContext = {
+        attrs: this.props,
+        slots: this.$slots,
+        emit: this.$emit.bind(this),
+        expose: this.$expose.bind(this),
+      };
+      const setupResult = props.setup(this.props, this.setupContext);
+      if (setupResult) {
+        if (typeof setupResult === "object") {
+          Object.assign(this.data, this._unwrapRefs(setupResult));
+        } else if (typeof setupResult === "function") {
+          this.props.render = setupResult;
+        }
+      }
+    }
 
     // 处理 computed 属性
     if (props.computed) {
@@ -55,6 +78,16 @@ class Component {
       }
     });
     return this;
+  }
+
+  // 解包 ref
+  _unwrapRefs(obj) {
+    return Object.fromEntries(
+      Object.entries(obj).map(([key, value]) => [
+        key,
+        isRef(value) ? value.value : value,
+      ])
+    );
   }
 
   render() {
@@ -123,6 +156,12 @@ class Component {
         listeners.apply(this, args);
       }
     }
+    // 触发全局事件总线
+    eventBus.dispatchEvent(new CustomEvent(eventName, { detail: args }));
+  }
+
+  $expose(exposed) {
+    Object.assign(this._exposed, exposed);
   }
 
   initTemplate(template) {
@@ -132,12 +171,52 @@ class Component {
     }
     this.compiledTemplate = compileTemplate(template);
     this.props.render = () => {
-      const html = this.compiledTemplate(this.data);
+      const html = this.compiledTemplate({
+        ...toRefs(this.data),
+        ...this.props,
+      });
       const vnode = createVnode("div", { html });
       const el = vnode.render(this.document);
       this.el = el;
       return el;
     };
+  }
+
+  // 异步组件支持
+  static asyncComponent(loader) {
+    let InnerComponent = null;
+    let error = null;
+
+    return {
+      render() {
+        if (InnerComponent) {
+          return createVnode(InnerComponent, this.props);
+        } else if (error) {
+          return createVnode("div", {}, "Error loading component");
+        } else {
+          return createVnode("div", {}, "Loading...");
+        }
+      },
+      async created() {
+        try {
+          InnerComponent = await loader();
+          this.$forceUpdate();
+        } catch (err) {
+          error = err;
+          this.$forceUpdate();
+        }
+      },
+    };
+  }
+
+  // 全局事件监听
+  static on(eventName, callback) {
+    eventBus.addEventListener(eventName, (e) => callback(...e.detail));
+  }
+
+  // 全局事件移除监听
+  static off(eventName, callback) {
+    eventBus.removeEventListener(eventName, (e) => callback(...e.detail));
   }
 }
 

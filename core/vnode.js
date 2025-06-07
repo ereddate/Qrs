@@ -8,6 +8,8 @@ class VNode {
     this.props = props;
     this.children = children;
     this.el = null;
+    this._cachedEl = null;
+    this._eventListeners = {}; // 存储事件监听器，用于销毁时移除
     return this;
   }
 
@@ -36,6 +38,7 @@ class VNode {
       updateChildren.bind(this)(elem, this.children);
     }
     this._cachedEl = elem; // 缓存结果
+    this.el = elem;
     return elem;
   }
 
@@ -47,6 +50,42 @@ class VNode {
     if (JSON.stringify(this.children) !== JSON.stringify(newVNode.children))
       return true;
     return false;
+  }
+
+  // 新增销毁方法
+  destroy() {
+    if (this.el) {
+      // 移除事件监听器
+      Object.entries(this._eventListeners).forEach(([event, handlers]) => {
+        handlers.forEach((handler) => {
+          this.el.removeEventListener(event, handler);
+        });
+      });
+
+      // 递归销毁子节点
+      if (this.children) {
+        this.children.forEach((child) => {
+          if (child instanceof VNode) {
+            child.destroy();
+          } else if (isComponent(child)) {
+            const componentInstance = new child.constructor(child.props);
+            if (componentInstance.el) {
+              componentInstance.el.destroy?.();
+            }
+          }
+        });
+      }
+
+      // 移除 DOM 节点
+      if (this.el.parentNode) {
+        this.el.parentNode.removeChild(this.el);
+      }
+
+      // 清理缓存和引用
+      this.el = null;
+      this._cachedEl = null;
+      this._eventListeners = {};
+    }
   }
 }
 
@@ -85,9 +124,13 @@ const updateProps = function (elem, props) {
         break;
       case "on":
         Object.keys(props[key]).forEach((event) => {
-          elem.addEventListener(event, function () {
+          const handler = function () {
             props[key][event].call(props, ...arguments);
-          });
+          };
+          elem.addEventListener(event, handler);
+          // 存储事件监听器，用于销毁时移除
+          this._eventListeners[event] = this._eventListeners[event] || [];
+          this._eventListeners[event].push(handler);
         });
         break;
       default:

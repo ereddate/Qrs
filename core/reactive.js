@@ -1,5 +1,6 @@
 const effectStack = [];
 const reactiveMap = new WeakMap();
+const refMap = new WeakMap();
 
 function reactive(obj, callback) {
   if (reactiveMap.has(obj)) {
@@ -160,5 +161,67 @@ function createEventEmitter() {
   };
 }
 
+// 增强 ref 函数
+function ref(initialValue) {
+  if (isRef(initialValue)) {
+    return initialValue;
+  }
+  const refObject = {
+    __v_isRef: true,
+    get value() {
+      if (effectStack.length > 0) {
+        const activeEffect = effectStack[effectStack.length - 1];
+        if (!refMap.has(refObject)) {
+          refMap.set(refObject, new Set());
+        }
+        refMap.get(refObject).add(activeEffect);
+      }
+      return initialValue;
+    },
+    set value(newValue) {
+      if (!Object.is(initialValue, newValue)) {
+        const oldValue = initialValue;
+        initialValue = newValue;
+        if (refMap.has(refObject)) {
+          refMap.get(refObject).forEach((effect) => queueJob(effect));
+        }
+      }
+    },
+  };
+  return refObject;
+}
+
+// 实现 isRef 函数
+function isRef(obj) {
+  return obj && obj.__v_isRef === true;
+}
+
+// 增强 toRefs 函数，支持深层转换
+function toRefs(object) {
+  if (!isReactive(object)) {
+    return object;
+  }
+  const result = {};
+  for (const key in object) {
+    result[key] = {
+      __v_isRef: true,
+      get value() {
+        return object[key];
+      },
+      set value(newValue) {
+        object[key] = newValue;
+      },
+    };
+    if (typeof object[key] === "object" && object[key] !== null) {
+      result[key] = toRefs(result[key].value);
+    }
+  }
+  return result;
+}
+
+function isReactive(obj) {
+  return reactiveMap.has(obj);
+}
+
 import { queueJob, nextTick } from "./queue.js";
-export { reactive, computed, watch };
+export { reactive, computed, watch, ref, isRef, toRefs, isReactive };
