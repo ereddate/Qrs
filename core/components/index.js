@@ -34,6 +34,10 @@ import Steps from "./Steps";
 import Tabbar from "./Tabbar";
 import NavBar from "./NavBar";
 import BackTop from "./BackTop";
+import Swipe from "./Swipe";
+import SwipeItem from "./SwipeItem";
+import Space from "./Space";
+import Image from "./Image";
 
 export {
   Button,
@@ -72,4 +76,8 @@ export {
   Tabbar,
   NavBar,
   BackTop,
+  Swipe,
+  SwipeItem,
+  Space,
+  Image,
 };

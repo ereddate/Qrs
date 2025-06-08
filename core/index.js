@@ -1,7 +1,7 @@
 import { eventBus } from "./eventBus.js";
 import { reactive } from "./reactive.js";
 import { Component, isComponent } from "./component.js";
-import { VNode, isVNode, createElem } from "./vnode.js";
+import { VNode, isVNode, createElem, createVnode } from "./vnode.js";
 import { Transition, isTransition } from "./transition.js";
 import { nextTick } from "./queue.js";
 import { query, extend } from "./utils.js";
@@ -32,6 +32,7 @@ export {
   name,
   reactive,
   createElem,
+  createVnode,
   Component,
   isComponent,
   createApp,

@@ -24,6 +24,13 @@ const Type = {
       promise: value instanceof Promise,
       function: typeof value === "function",
       object: typeof value === "object" && !Array.isArray(value),
+      string: typeof value === "string",
+      number: typeof value === "number" && !isNaN(value),
+      boolean: typeof value === "boolean",
+      symbol: typeof value === "symbol",
+      bigint: typeof value === "bigint",
+      null: value === null,
+      undefined: value === undefined,
     };
 
     if (typeMap.hasOwnProperty(expectedType)) {

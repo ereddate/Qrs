@@ -2,10 +2,9 @@ import { reactive, computed, watch, ref, isRef, toRefs } from "./reactive.js";
 import { nextTick } from "./queue.js";
 import compileTemplate from "./templateCompiler.js";
 import { createVnode, isVNode } from "./vnode.js";
-import { EventBus } from "./eventBus.js";
 
 // 定义全局的事件总线
-const eventBus = new EventBus();
+const eventBus = new EventTarget();
 
 // 组件类
 class Component {
@@ -13,7 +12,7 @@ class Component {
     const that = this;
     this.props?.beforeCreated?.call(this);
     this.props = props;
-    const { template } = props;
+    const { template, parent } = props;
     // 新增：初始化 slots
     this.$slots = props.slots || {};
     this.data = reactive(
@@ -24,7 +23,7 @@ class Component {
     );
     this.document = document;
 
-    this.parent = parent;
+    this.parent = parent || null;
     this.provided = {};
     if (props.provide) {
       this.provided =

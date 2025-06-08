@@ -4,6 +4,7 @@ import {
   Component,
   createApp,
   Transition,
+  createVnode,
 } from "./core/index.js";
 import "./core/ui/base.scss";
 import store from "./src/store/index.js";
@@ -46,6 +47,10 @@ import {
   Tabbar,
   NavBar,
   BackTop,
+  Swipe,
+  SwipeItem,
+  Space,
+  Image,
 } from "./core/components";
 
 const dom = new Dom("body");
@@ -214,9 +219,75 @@ const App = new Component({
       MyTransition,
       pComponent,
       `<h1>Components Demo:</h1>`,
+      `<h2>Space demo:</h2>`,
+      createElem(
+        Space,
+        {
+          direction: "horizontal",
+          spacer: 16,
+          wrap: true,
+        },
+        createElem(Button, {
+          type: "primary",
+          text: "点击我",
+          on: {
+            click: () => console.log("按钮点击"),
+          },
+        }),
+        createElem(Button, {
+          type: "secondary",
+          text: "点击我",
+          on: {
+            click: () => console.log("按钮点击"),
+          },
+        }),
+        createElem(Button, {
+          type: "success",
+          text: "点击我",
+          on: {
+            click: () => console.log("按钮点击"),
+          },
+        })
+      ),
+      createElem(
+        Space,
+        {
+          direction: "vertical",
+          alignment: "start",
+          spacer: "16",
+        },
+        createElem(Button, {
+          type: "primary",
+          text: "点击我",
+          on: {
+            click: () => console.log("按钮点击"),
+          },
+        }),
+        createElem(Button, {
+          type: "secondary",
+          text: "点击我",
+          on: {
+            click: () => console.log("按钮点击"),
+          },
+        }),
+        createElem(Button, {
+          type: "success",
+          text: "点击我",
+          on: {
+            click: () => console.log("按钮点击"),
+          },
+        })
+      ),
       `<h2>Button demo:</h2>`,
       createElem(Button, {
-        type: "primary",
+        type: "danger",
+        text: "点击我",
+        on: {
+          click: () => console.log("按钮点击"),
+        },
+      }),
+      createElem(Button, {
+        type: "warning",
         text: "点击我",
         on: {
           click: () => console.log("按钮点击"),
@@ -226,6 +297,7 @@ const App = new Component({
       createElem(Card, {
         title: "卡片标题",
         children: "卡片内容",
+        footer: "卡片底部",
       }),
       `<h2>Input demo:</h2>`,
       createElem(Input, {
@@ -629,6 +701,33 @@ const App = new Component({
         right: 20,
         bottom: 80,
         visibilityHeight: 300,
+      }),
+      `<h2>Swipe demo:</h2>`,
+      createElem(
+        Swipe,
+        {
+          autoplay: 3000,
+          indicators: true,
+          duration: 500,
+          on: {
+            change(index) {
+              console.log("当前轮播索引:", index);
+            },
+          },
+        },
+        createElem(SwipeItem, {}, ["Slide 1"]),
+        createElem(SwipeItem, {}, ["Slide 2"]),
+        createElem(SwipeItem, {}, ["Slide 3"])
+      ),
+      `<h2>Image demo:</h2>`,
+      createElem(Image, {
+        src: "/path/to/image.jpg",
+        fit: "cover",
+        previewSrcList: ["/path/to/large-image.jpg"],
+        on: {
+          load: () => console.log("图片加载成功"),
+          error: () => console.log("图片加载失败"),
+        },
       })
     );
   },

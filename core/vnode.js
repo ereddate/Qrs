@@ -7,6 +7,7 @@ class VNode {
     this.tag = tag;
     this.props = props;
     this.children = children;
+    this.parent = props.parent || null;
     this.el = null;
     this.key = key;
     this._cachedEl = null;
@@ -19,9 +20,23 @@ class VNode {
 
     // 添加缓存机制
     if (this._cachedEl) return this._cachedEl;
-    if (isComponent(this.tag) || isVNode(this.tag)) {
+    if (isComponent(this.tag)) {
       // 修正递归逻辑
-      const newInstance = new this.tag.constructor(this.props);
+      const newInstance = new this.tag.constructor({
+        ...this.props,
+      });
+      const el = newInstance.render();
+      this.el = el;
+      return el;
+    } else if (isVNode(this.tag)) {
+      // 修正递归逻辑
+      const newInstance = new this.tag.constructor(
+        this.tag,
+        {
+          ...this.props,
+        },
+        this.children
+      );
       const el = newInstance.render();
       this.el = el;
       return el;
@@ -152,9 +167,20 @@ const updateProps = function (elem, props) {
 };
 
 const updateChildren = function (elem, children) {
+  if (String.is(children)) {
+    elem.appendChild(document.createTextNode(children));
+    return;
+  }
+  if (children instanceof Node) {
+    elem.appendChild(children);
+    return;
+  }
   children.forEach((child) => {
     if (isComponent(child)) {
-      const newComponent = new child.constructor(child.props);
+      const newComponent = new child.constructor({
+        ...child.props,
+        parent: this,
+      });
       const rElem = newComponent.render();
       const el = isVNode(rElem) ? rElem.render() : rElem;
       newComponent.el = el;
@@ -162,7 +188,7 @@ const updateChildren = function (elem, children) {
     } else if (isVNode(child)) {
       const newVnode = new child.constructor(
         child.tag,
-        child.props,
+        { ...child.props, parent: this },
         child.children
       );
       const el = newVnode.render();
@@ -172,8 +198,12 @@ const updateChildren = function (elem, children) {
         // 识别HTML字符串并转换为DOM节点
         const template = document.createElement("template");
         template.innerHTML = child.trim();
-        const nodes = template.content.childNodes;
-        updateChildren.bind(this)(elem, Array.from(nodes));
+        const nodes = Array.from(template.content.childNodes).filter(
+          (node) =>
+            node.nodeType === Node.ELEMENT_NODE ||
+            (node.nodeType === Node.TEXT_NODE && node.textContent.trim() !== "")
+        );
+        updateChildren.bind(this)(elem, nodes);
       } else {
         elem.appendChild(document.createTextNode(child));
       }
@@ -208,7 +238,12 @@ const createElem = (tag, props, ...children) => {
   if (isComponent(tag)) {
     const slots = [];
     slots.default = children;
-    const newComponent = new tag.constructor({ ...tag.props, ...props, slots });
+    const newComponent = new tag.constructor({
+      ...tag.props,
+      ...props,
+      slots,
+      parent: this,
+    });
     const elem = newComponent.render();
     newComponent.el = elem;
     return elem;

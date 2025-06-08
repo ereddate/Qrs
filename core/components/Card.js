@@ -12,6 +12,8 @@ const Card = new Component({
         this.props.title &&
           createElem("div", { class: "card-header" }, this.props.title),
         createElem("div", { class: "card-body" }, this.props.children),
+        this.props.footer &&
+          createElem("div", { class: "card-footer" }, this.props.footer),
       ]
     );
   },

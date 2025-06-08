@@ -2924,3 +2924,119 @@ body {
     color: #ffffff;
     font-weight: 700;
 }
+
+.swipe {
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    height: 200px;
+}
+
+.swipe-wrapper {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    transition: transform 0.5s ease;
+}
+
+.swipe-item {
+    flex-shrink: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    color: white;
+    background-color: #cccccc;
+}
+
+.swipe-indicators {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 4px;
+}
+
+.swipe-indicator {
+    width: 6px;
+    height: 6px;
+    border-radius: 100%;
+    background-color: rgba(0, 0, 0, 0.3);
+}
+
+.swipe-indicator.active {
+    background-color: #1989fa;
+}
+
+// 在文件合适位置添加（建议在文件末尾）
+.x-space {
+    // 基础布局
+    display: inline-flex;
+    vertical-align: middle;
+
+    // 处理旧浏览器兼容
+    &--fallback {
+        margin: calc(-1 * var(--spacer) / 2);
+
+        .x-space__item {
+            margin: calc(var(--spacer) / 2);
+        }
+    }
+
+    // 子项通用样式
+    &__item {
+        display: flex;
+        align-items: center;
+    }
+
+    // 响应式处理
+    @media (max-width: 768px) {
+        &--mobile-wrap {
+            flex-wrap: wrap !important;
+
+            .x-space__item {
+                margin-bottom: 8px;
+            }
+        }
+    }
+
+    // 分隔符样式
+    &__split {
+        color: #c0c4cc;
+        padding: 0 8px;
+    }
+}
+
+// 添加在全局变量区域
+:root {
+    --spacer: 8px; // 默认间距变量
+}
+
+.x-image {
+    position: relative;
+    transition: transform 0.3s ease;
+
+    &__placeholder {
+        &::after {
+            content: "Loading...";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+    }
+
+    &__error {
+        &::after {
+            content: "✖";
+            margin-left: 5px;
+        }
+    }
+
+    &:hover {
+        transform: scale(1.02);
+    }
+}
