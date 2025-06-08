@@ -3,11 +3,12 @@ import { nextTick } from "./queue.js";
 import { isTransition } from "./transition.js";
 
 class VNode {
-  constructor(tag, props, children) {
+  constructor(tag, props = {}, children = [], key = null) {
     this.tag = tag;
     this.props = props;
     this.children = children;
     this.el = null;
+    this.key = key;
     this._cachedEl = null;
     this._eventListeners = {}; // 存储事件监听器，用于销毁时移除
     return this;
@@ -212,10 +213,7 @@ const createElem = (tag, props, ...children) => {
     newComponent.el = elem;
     return elem;
   }
-  const vnode = createVnode(tag, props, children);
-  /* const elem = vnode.render();
-  return elem; */
-  return vnode;
+  return createVnode(tag, props, children);
 };
 
 const createVnode = (tag, props, children, key = null) => {

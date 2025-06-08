@@ -18,11 +18,23 @@ class Component {
     this.$slots = props.slots || {};
     this.data = reactive(
       Function.is(props.data) ? props.data.call(this) : props.data || {},
-      function (key, oldValue, newValue) {
-        that.update(key, oldValue, newValue);
+      (key, oldValue, newValue) => {
+        this.update(key, oldValue, newValue);
       }
     );
     this.document = document;
+
+    this.parent = parent;
+    this.provided = {};
+    if (props.provide) {
+      this.provided =
+        typeof props.provide === "function"
+          ? props.provide.call(this)
+          : props.provide;
+    }
+    if (props.inject) {
+      this._handleInject(props.inject);
+    }
 
     // 处理 setup 函数
     if (props.setup) {
@@ -78,6 +90,30 @@ class Component {
       }
     });
     return this;
+  }
+
+  _handleInject(inject) {
+    if (Array.isArray(inject)) {
+      inject.forEach((key) => {
+        this[key] = this._findInjection(key);
+      });
+    } else if (typeof inject === "object") {
+      Object.keys(inject).forEach((key) => {
+        const source = inject[key].from || key;
+        this[key] = this._findInjection(source) || inject[key].default;
+      });
+    }
+  }
+
+  _findInjection(key) {
+    let current = this.parent;
+    while (current) {
+      if (current.provided[key] !== undefined) {
+        return current.provided[key];
+      }
+      current = current.parent;
+    }
+    return undefined;
   }
 
   // 解包 ref
