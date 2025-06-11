@@ -2,44 +2,64 @@ const queue = new Set();
 let isFlushing = false;
 let flushIndex = 0;
 
+/**
+ * 将任务加入微任务队列，避免重复执行
+ * @param {Function} job
+ */
 function queueJob(job) {
+  if (typeof job !== "function") return;
   queue.add(job);
   if (!isFlushing) {
     isFlushing = true;
     Promise.resolve().then(flushJobs);
-    // 在任务队列触发，DOM 可能更新后执行全局回调
+    // DOM 可能更新后执行全局回调
     nextTick(() => {
-      if (Function.is(window.globalAfterQueueJob)) {
+      if (typeof window.globalAfterQueueJob === "function") {
         window.globalAfterQueueJob();
       }
     });
   }
 }
 
+/**
+ * 执行队列中的所有任务
+ */
 function flushJobs() {
   try {
-    // 转换为数组并按优先级排序
+    // 支持优先级，优先级越小越先执行
     const jobs = Array.from(queue).sort(
       (a, b) => (a.priority || 0) - (b.priority || 0)
     );
     for (flushIndex = 0; flushIndex < jobs.length; flushIndex++) {
-      jobs[flushIndex]();
+      try {
+        jobs[flushIndex]();
+      } catch (err) {
+        // 单个任务异常不影响队列后续任务
+        console.error("queueJob error:", err);
+      }
     }
   } finally {
     isFlushing = false;
     queue.clear();
     flushIndex = 0;
-    // 在任务队列执行完成后执行回调
+    // 队列执行完成后触发全局事件
     nextTick(() => {
-      // 这里可以添加全局的更新完成后的回调逻辑
-      // 例如触发一个全局事件
-      const globalUpdateEvent = new CustomEvent("globalUpdateCompleted");
-      window.dispatchEvent(globalUpdateEvent);
+      if (
+        typeof window !== "undefined" &&
+        typeof window.dispatchEvent === "function"
+      ) {
+        const globalUpdateEvent = new CustomEvent("globalUpdateCompleted");
+        window.dispatchEvent(globalUpdateEvent);
+      }
     });
   }
 }
 
-// 定义 nextTick 函数
+/**
+ * nextTick：下一个微任务时机执行回调
+ * @param {Function} [cb]
+ * @returns {Promise|undefined}
+ */
 const nextTick = (() => {
   const callbacks = [];
   let pending = false;
@@ -49,13 +69,20 @@ const nextTick = (() => {
     const copies = callbacks.slice();
     callbacks.length = 0;
     for (let i = 0; i < copies.length; i++) {
-      copies[i]();
+      try {
+        copies[i]();
+      } catch (err) {
+        console.error("nextTick callback error:", err);
+      }
     }
   }
 
-  // 优先使用MutationObserver
+  // 优先使用 MutationObserver
   let timerFunc;
-  if (typeof MutationObserver !== "undefined") {
+  if (
+    typeof MutationObserver !== "undefined" &&
+    typeof document !== "undefined"
+  ) {
     let counter = 1;
     const observer = new MutationObserver(flushCallbacks);
     const textNode = document.createTextNode(String(counter));
@@ -69,13 +96,14 @@ const nextTick = (() => {
   }
 
   return function (cb) {
-    if (Function.is(cb)) {
+    if (typeof cb === "function") {
       callbacks.push(cb);
       if (!pending) {
         pending = true;
         timerFunc();
       }
     } else {
+      // 支持 Promise 用法
       return new Promise((resolve) => {
         callbacks.push(resolve);
         if (!pending) {

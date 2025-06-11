@@ -10,11 +10,11 @@ const Type = {
    * @returns {boolean} 是否匹配期望类型
    */
   check(value, expectedType) {
-    // 处理null和undefined
+    // 处理 null 和 undefined
     if (value === null) return expectedType === "null";
     if (value === undefined) return expectedType === "undefined";
 
-    // 处理内置对象类型
+    // 内置类型映射
     const typeMap = {
       array: Array.isArray(value),
       date: value instanceof Date,
@@ -23,7 +23,8 @@ const Type = {
       set: value instanceof Set,
       promise: value instanceof Promise,
       function: typeof value === "function",
-      object: typeof value === "object" && !Array.isArray(value),
+      object:
+        typeof value === "object" && value !== null && !Array.isArray(value),
       string: typeof value === "string",
       number: typeof value === "number" && !isNaN(value),
       boolean: typeof value === "boolean",
@@ -33,7 +34,7 @@ const Type = {
       undefined: value === undefined,
     };
 
-    if (typeMap.hasOwnProperty(expectedType)) {
+    if (Object.prototype.hasOwnProperty.call(typeMap, expectedType)) {
       return typeMap[expectedType];
     }
 
@@ -55,7 +56,7 @@ const Type = {
         if (typeInfo.params) {
           args.forEach((arg, index) => {
             const expectedType = typeInfo.params[index];
-            if (!this.check(arg, expectedType)) {
+            if (!Type.check(arg, expectedType)) {
               throw new TypeError(
                 `参数 ${index} 类型错误: 期望 ${expectedType}, 实际 ${typeof arg}`
               );
@@ -66,7 +67,7 @@ const Type = {
         const result = originalMethod.apply(this, args);
 
         // 返回值类型验证
-        if (typeInfo.return && !this.check(result, typeInfo.return)) {
+        if (typeInfo.return && !Type.check(result, typeInfo.return)) {
           throw new TypeError(
             `返回值类型错误: 期望 ${typeInfo.return}, 实际 ${typeof result}`
           );
@@ -82,22 +83,26 @@ const Type = {
 
 // 为内置对象添加类型检查方法
 const extendTypeCheck = (Constructor, typeName) => {
-  Constructor.is = function (object) {
-    return Type.check(object, typeName);
-  };
+  if (typeof Constructor.is !== "function") {
+    Constructor.is = function (object) {
+      return Type.check(object, typeName);
+    };
+  }
 };
 
 // 扩展内置对象的类型检查方法
-extendTypeCheck(Number, "number");
-extendTypeCheck(String, "string");
-extendTypeCheck(Array, "array");
-extendTypeCheck(Object, "object");
-extendTypeCheck(Date, "date");
-extendTypeCheck(RegExp, "regexp");
-extendTypeCheck(Map, "map");
-extendTypeCheck(Set, "set");
-extendTypeCheck(Promise, "promise");
-extendTypeCheck(Function, "function");
+[
+  [Number, "number"],
+  [String, "string"],
+  [Array, "array"],
+  [Object, "object"],
+  [Date, "date"],
+  [RegExp, "regexp"],
+  [Map, "map"],
+  [Set, "set"],
+  [Promise, "promise"],
+  [Function, "function"],
+].forEach(([Ctor, type]) => extendTypeCheck(Ctor, type));
 
 // 导出类型检查工具
 export default Type;

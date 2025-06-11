@@ -53,6 +53,8 @@ class Router {
     this.beforeResolveGuards = [];
     this.afterEachHooks = [];
     this.routeGuards = {};
+    this.errorHandlers = [];
+    this.scrollBehavior = options.scrollBehavior;
 
     if (this.mode === "hash") {
       window.addEventListener("hashchange", () => {
@@ -89,6 +91,12 @@ class Router {
     this.afterEachHooks.push(hook);
   }
 
+  onError(handler) {
+    if (typeof handler === "function") {
+      this.errorHandlers.push(handler);
+    }
+  }
+
   async handleRouteChange(toPath, query) {
     try {
       const fromPath = this.current.path;
@@ -96,7 +104,9 @@ class Router {
       const fromRoute = this.match(fromPath);
 
       if (!toRoute) {
-        throw new Error(`Route not found for path: ${toPath}`);
+        const error = new Error(`Route not found for path: ${toPath}`);
+        this._triggerError(error, { toPath, fromPath });
+        return;
       }
 
       const params = parseParams(toPath, toRoute.path);
@@ -106,6 +116,7 @@ class Router {
 
       this.update && this.update(toPath);
 
+      // 全局 beforeEach
       const globalBeforeEachResults = await Promise.all(
         this.beforeEachGuards.map(async (guard) => {
           try {
@@ -119,7 +130,7 @@ class Router {
               { path: toPath, params, meta: toRoute.meta, query }
             );
           } catch (error) {
-            console.error("Global route guard error:", error);
+            this._triggerError(error, { toPath, fromPath });
             return false;
           }
         })
@@ -138,28 +149,35 @@ class Router {
         }
       }
 
+      // 路由独享 beforeEnter
       if (toRoute.beforeEnter) {
-        const routeBeforeEnterResult = await toRoute.beforeEnter(
-          { path: toPath, params, meta: toRoute.meta, query },
-          {
-            path: fromPath,
-            params: fromParams,
-            meta: fromRoute.meta,
-            query: this.current.query,
-          }
-        );
-        if (routeBeforeEnterResult === false) {
-          isNavigationCancelled = true;
-          return;
-        } else if (typeof routeBeforeEnterResult === "string") {
-          if (!isNavigationCancelled) {
-            this.push(routeBeforeEnterResult, query);
+        try {
+          const routeBeforeEnterResult = await toRoute.beforeEnter(
+            { path: toPath, params, meta: toRoute.meta, query },
+            {
+              path: fromPath,
+              params: fromParams,
+              meta: fromRoute.meta,
+              query: this.current.query,
+            }
+          );
+          if (routeBeforeEnterResult === false) {
             isNavigationCancelled = true;
+            return;
+          } else if (typeof routeBeforeEnterResult === "string") {
+            if (!isNavigationCancelled) {
+              this.push(routeBeforeEnterResult, query);
+              isNavigationCancelled = true;
+            }
+            return;
           }
+        } catch (error) {
+          this._triggerError(error, { toPath, fromPath });
           return;
         }
       }
 
+      // 全局 beforeResolve
       const globalBeforeResolveResults = await Promise.all(
         this.beforeResolveGuards.map(async (guard) => {
           try {
@@ -173,7 +191,7 @@ class Router {
               { path: toPath, params, meta: toRoute.meta, query }
             );
           } catch (error) {
-            console.error("Global resolve guard error:", error);
+            this._triggerError(error, { toPath, fromPath });
             return false;
           }
         })
@@ -197,6 +215,12 @@ class Router {
         this.current.params = params;
         this.current.meta = toRoute.meta;
         this.current.query = query;
+        // 支持滚动行为
+        if (typeof this.scrollBehavior === "function") {
+          setTimeout(() => {
+            this.scrollBehavior({ to: toRoute, from: fromRoute });
+          }, 0);
+        }
       }
 
       this.afterEachHooks.forEach((hook) => {
@@ -211,11 +235,19 @@ class Router {
             { path: toPath, params, meta: toRoute.meta, query }
           );
         } catch (error) {
-          console.error("Route hook error:", error);
+          this._triggerError(error, { toPath, fromPath });
         }
       });
     } catch (error) {
-      console.error("Route change error:", error);
+      this._triggerError(error, { toPath, fromPath: this.current.path });
+    }
+  }
+
+  _triggerError(error, info) {
+    if (this.errorHandlers.length) {
+      this.errorHandlers.forEach((handler) => handler(error, info));
+    } else {
+      console.error("Router error:", error, info);
     }
   }
 
@@ -350,37 +382,50 @@ const RouterView = new Component({
       prevComponent: null,
       isEntering: false,
       isLeaving: false,
+      error: null,
     };
   },
   async created() {
-    this.props.router?.init();
-    const matchedRoute = this.props.router?.match(
-      this.props.router?.current.path || this.initialPath
-    );
-    if (matchedRoute) {
-      this.currentComponent = matchedRoute.component;
-    }
-    const that = this;
-    this.props.router &&
-      (this.props.router.update = (toPath) => {
-        const matchedRoute = that.props.router?.match(toPath);
-        if (matchedRoute) {
-          that.isLeaving = true;
-          that.update();
+    try {
+      this.props.router?.init();
+      const matchedRoute = this.props.router?.match(
+        this.props.router?.current.path || this.initialPath
+      );
+      if (matchedRoute) {
+        this.currentComponent = matchedRoute.component;
+      }
+      const that = this;
+      this.props.router &&
+        (this.props.router.update = (toPath) => {
+          const matchedRoute = that.props.router?.match(toPath);
+          if (matchedRoute) {
+            that.isLeaving = true;
+            that.update();
 
-          that.prevComponent = that.currentComponent;
-          that.currentComponent = matchedRoute.component;
-          that.isLeaving = false;
-          that.isEntering = true;
-          that.update();
+            that.prevComponent = that.currentComponent;
+            that.currentComponent = matchedRoute.component;
+            that.isLeaving = false;
+            that.isEntering = true;
+            that.update();
 
-          setTimeout(() => {
-            that.isEntering = false;
-          }, 300);
-        }
+            setTimeout(() => {
+              that.isEntering = false;
+            }, 300);
+          }
+        });
+      // 错误处理
+      this.props.router?.onError((err) => {
+        that.error = err;
+        that.update();
       });
+    } catch (err) {
+      this.error = err;
+    }
   },
   render() {
+    if (this.error) {
+      return createElem("div", { class: "router-error" }, String(this.error));
+    }
     if (this.isLeaving && this.prevComponent) {
       return createElem(this.prevComponent, { class: "route-leave" });
     }
@@ -405,29 +450,68 @@ const RouterLink = new Component({
       type: Boolean,
       default: false,
     },
+    class: {
+      type: [String, Array, Object],
+      default: "router-link",
+    },
+    activeClass: {
+      type: String,
+      default: "router-link-active",
+    },
+    exact: {
+      type: Boolean,
+      default: false,
+    },
+  },
+  computed: {
+    isActive() {
+      const currentPath = this.props.router?.current?.path;
+      if (!currentPath) return false;
+      if (this.props.exact) {
+        return currentPath === this.targetPath;
+      }
+      return currentPath.startsWith(this.targetPath);
+    },
+    linkClass() {
+      let base = this.props.class || "router-link";
+      if (this.isActive) {
+        if (typeof base === "string") {
+          return `${base} ${this.props.activeClass}`;
+        }
+        if (Array.isArray(base)) {
+          return [...base, this.props.activeClass];
+        }
+        if (typeof base === "object") {
+          return { ...base, [this.props.activeClass]: true };
+        }
+      }
+      return base;
+    },
+    targetPath() {
+      if (typeof this.props.to === "string") {
+        return this.props.to;
+      } else if (typeof this.props.to === "object" && this.props.to.name) {
+        const route = this.props.router?.matchByName(this.props.to.name);
+        if (route) {
+          let path = route.path;
+          if (this.props.to.params) {
+            Object.entries(this.props.to.params).forEach(([key, value]) => {
+              path = path.replace(`:${key}`, value);
+            });
+          }
+          return path;
+        }
+      }
+      return "#";
+    },
   },
   render() {
-    let path;
-    if (typeof this.props.to === "string") {
-      path = this.props.to;
-    } else if (typeof this.props.to === "object" && this.props.to.name) {
-      const route = this.props.router?.matchByName(this.props.to.name);
-      if (route) {
-        path = route.path;
-        if (this.props.to.params) {
-          Object.entries(this.props.to.params).forEach(([key, value]) => {
-            path = path.replace(`:${key}`, value);
-          });
-        }
-      } else {
-        path = "#";
-      }
-    }
+    const path = this.targetPath;
     const href = this.props?.router?.mode === "hash" ? `#${path}` : path;
     return createElem(
       "a",
       {
-        class: this.props?.class || "router-link",
+        class: this.linkClass,
         href,
         on: {
           click: (event) => {

@@ -60,6 +60,7 @@ function compileTemplate(template, options = {}) {
   const componentRegex = /<([A-Z]\w*)([^>]*)>([\s\S]*?)<\/\1>/g;
   const slotRegex = /<slot(?:\s+name="([^"]+)")?><\/slot>/g;
 
+  // 优化：只返回处理结果，不做无用的遍历
   const parseDirectives = (element, data) => {
     let match;
     const directivesFound = [];
@@ -68,11 +69,10 @@ function compileTemplate(template, options = {}) {
       const directiveValue = match[2];
       directivesFound.push({ name: directiveName, value: directiveValue });
     }
-    return directivesFound.map((directive) => {
+    directivesFound.forEach((directive) => {
       if (directives[directive.name]) {
-        return directives[directive.name](element, directive.value, data);
+        directives[directive.name](element, directive.value, data);
       }
-      return null;
     });
   };
 
@@ -114,7 +114,6 @@ function compileTemplate(template, options = {}) {
   const handleEvents = (element, data) => {
     return element.replace(eventRegex, (_, eventName, handlerExpression) => {
       const handler = () => {
-        const args = [];
         // 处理方法调用参数
         if (
           handlerExpression.includes("(") &&
@@ -138,6 +137,7 @@ function compileTemplate(template, options = {}) {
         }
         return safeEvaluate(handlerExpression, data, filters);
       };
+      // 事件绑定只做标记，实际事件绑定由框架运行时处理
       return `data-event-${eventName}="${handler.toString()}"`;
     });
   };
@@ -225,16 +225,13 @@ function compileTemplate(template, options = {}) {
     // 处理组件
     result = handleComponents(result, data);
     // 处理 v-for 循环
-    result = result.replace(
-      /<[^>]*v-for[^>]*>([\s\S]*?)<\/[^>]*>/g,
-      (match) => {
-        return handleLoop(match, data);
-      }
+    result = result.replace(/<[^>]*v-for[^>]*>([\s\S]*?)<\/[^>]*>/g, (match) =>
+      handleLoop(match, data)
     );
     // 处理 v-if 条件渲染
-    result = result.replace(/<[^>]*v-if[^>]*>([\s\S]*?)<\/[^>]*>/g, (match) => {
-      return handleConditional(match, data);
-    });
+    result = result.replace(/<[^>]*v-if[^>]*>([\s\S]*?)<\/[^>]*>/g, (match) =>
+      handleConditional(match, data)
+    );
     // 处理事件绑定
     result = handleEvents(result, data);
     // 处理 v-model 双向绑定

@@ -4,7 +4,10 @@ class Dom {
   constructor(selector) {
     if (typeof selector === "string") {
       this.el = document.querySelector(selector);
-    } else if (selector instanceof HTMLElement) {
+    } else if (
+      selector instanceof HTMLElement ||
+      selector instanceof DocumentFragment
+    ) {
       this.el = selector;
     } else if (selector instanceof Dom) {
       this.el = selector.el;
@@ -42,7 +45,7 @@ class Dom {
   toVNode() {
     if (!this.el) return null;
     return new VNode(
-      this.el.tagName.toLowerCase(),
+      this.el.tagName?.toLowerCase?.() || "",
       { ...this.el.dataset },
       Array.from(this.el.childNodes).map((node) => {
         if (node.nodeType === Node.TEXT_NODE) return node.textContent;
@@ -120,16 +123,17 @@ class Dom {
   }
 
   data(key, value) {
+    if (!this.el) return undefined;
     if (value !== undefined) {
       this.el.dataset[key] = JSON.stringify(value);
       return this;
     }
     try {
-      return this.el?.dataset[key]
+      return this.el.dataset[key]
         ? JSON.parse(this.el.dataset[key])
         : undefined;
     } catch {
-      return this.el?.dataset[key];
+      return this.el.dataset[key];
     }
   }
 
@@ -144,8 +148,13 @@ class Dom {
       const delegateHandler = (e) => {
         if (e.target.matches(selector)) handler.call(e.target, e);
       };
+      delegateHandler.originalHandler = handler;
       this._delegates = this._delegates || [];
-      this._delegates.push({ event, handler: delegateHandler });
+      this._delegates.push({
+        event,
+        handler: delegateHandler,
+        originalHandler: handler,
+      });
       this.el?.addEventListener(event, delegateHandler);
     }
     return this;
@@ -158,6 +167,9 @@ class Dom {
       .forEach((h) => {
         this.el?.removeEventListener(h.event, h.handler);
       });
+    this._handlers = (this._handlers || []).filter(
+      (h) => !(h.event === event && (!handler || h.handler === handler))
+    );
 
     // 清理委托事件
     (this._delegates || [])
@@ -167,18 +179,21 @@ class Dom {
       .forEach((d) => {
         this.el?.removeEventListener(d.event, d.handler);
       });
+    this._delegates = (this._delegates || []).filter(
+      (d) => !(d.event === event && (!handler || d.originalHandler === handler))
+    );
 
     return this;
   }
 
   // 显示隐藏
   show() {
-    this.el.style.display = "";
+    if (this.el) this.el.style.display = "";
     return this;
   }
 
   hide() {
-    this.el.style.display = "none";
+    if (this.el) this.el.style.display = "none";
     return this;
   }
 
@@ -189,7 +204,7 @@ class Dom {
     const node =
       child instanceof Dom
         ? child.el
-        : child instanceof HTMLElement
+        : child instanceof HTMLElement || child instanceof DocumentFragment
         ? child
         : typeof child === "string"
         ? document.createTextNode(child)
@@ -205,7 +220,7 @@ class Dom {
     const node =
       child instanceof Dom
         ? child.el
-        : child instanceof HTMLElement
+        : child instanceof HTMLElement || child instanceof DocumentFragment
         ? child
         : typeof child === "string"
         ? document.createTextNode(child)
@@ -252,7 +267,7 @@ class Dom {
   // 表单操作
   val(value) {
     if (value !== undefined) {
-      this.el.value = value;
+      if (this.el) this.el.value = value;
       return this;
     }
     return this.el?.value;
@@ -325,7 +340,11 @@ class Dom {
 
   appendTo(parent) {
     if (parent instanceof Dom) parent.el?.appendChild(this.el);
-    else if (parent instanceof HTMLElement) parent.appendChild(this.el);
+    else if (
+      parent instanceof HTMLElement ||
+      parent instanceof DocumentFragment
+    )
+      parent.appendChild(this.el);
     else if (typeof parent === "string") {
       const parentEl = document.querySelector(parent);
       if (parentEl) parentEl.appendChild(this.el);
@@ -352,7 +371,7 @@ class Dom {
 
   html(content) {
     if (content !== undefined) {
-      this.el.innerHTML = content;
+      if (this.el) this.el.innerHTML = content;
       return this;
     }
     return this.el?.innerHTML;
@@ -452,7 +471,7 @@ class Dom {
         });
 
         if (progress < 1) {
-          requestAnimationFrame(animateFrame);
+          this._currentAnimation = requestAnimationFrame(animateFrame);
         } else {
           this._animationQueue.shift();
           if (this._animationQueue.length > 0) {
@@ -462,7 +481,7 @@ class Dom {
         }
       };
 
-      requestAnimationFrame(animateFrame);
+      this._currentAnimation = requestAnimationFrame(animateFrame);
     };
 
     if (this._animationQueue.length === 0) {

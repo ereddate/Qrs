@@ -19,7 +19,7 @@ function installModule(store, rootState, path, module) {
     store._mutations[namespacedType] = store._mutations[namespacedType] || [];
     store._mutations[namespacedType].push((payload) => {
       mutation.call(store, module.state, payload);
-      store._notifySubscribers();
+      store._notifySubscribers(namespacedType, payload);
     });
   });
 
@@ -34,6 +34,8 @@ function installModule(store, rootState, path, module) {
         commit: store.commit.bind(store),
         dispatch: store.dispatch.bind(store),
         getters: store.getters,
+        namespace,
+        module,
       };
       return action.call(store, context, payload);
     });
@@ -160,6 +162,7 @@ class Store {
     this._actions = Object.create(null);
     this._wrappedGetters = Object.create(null);
     this._subscribers = [];
+    this._actionSubscribers = [];
     this._plugins = options.plugins || [];
 
     // 初始化状态
@@ -181,14 +184,26 @@ class Store {
     entry.forEach((handler) => handler(payload));
   }
 
-  // 分发 action
+  // 分发 action，支持 action 订阅
   dispatch(actionName, payload) {
     const entry = this._actions[actionName];
     if (!entry) {
       console.warn(`Action ${actionName} not found`);
-      return;
+      return Promise.resolve([]);
     }
+    // action 订阅前置钩子
+    this._actionSubscribers.forEach((sub) => {
+      if (typeof sub.before === "function")
+        sub.before(actionName, payload, this);
+    });
     const results = entry.map((handler) => handler(payload));
+    // action 订阅后置钩子
+    Promise.all(results).then((res) => {
+      this._actionSubscribers.forEach((sub) => {
+        if (typeof sub.after === "function")
+          sub.after(actionName, payload, this, res);
+      });
+    });
     return Promise.all(results);
   }
 
@@ -206,13 +221,40 @@ class Store {
 
   // 订阅状态变化
   subscribe(callback) {
-    this._subscribers.push(callback);
+    if (typeof callback === "function") {
+      this._subscribers.push(callback);
+    }
+    // 返回取消订阅函数
+    return () => {
+      const idx = this._subscribers.indexOf(callback);
+      if (idx > -1) this._subscribers.splice(idx, 1);
+    };
   }
 
-  // 通知订阅者状态变化
-  _notifySubscribers() {
+  // 订阅 action 执行（增强功能）
+  subscribeAction(subscriber) {
+    if (
+      subscriber &&
+      (typeof subscriber === "function" ||
+        (typeof subscriber === "object" &&
+          (typeof subscriber.before === "function" ||
+            typeof subscriber.after === "function")))
+    ) {
+      this._actionSubscribers.push(subscriber);
+    }
+    // 返回取消订阅函数
+    return () => {
+      const idx = this._actionSubscribers.indexOf(subscriber);
+      if (idx > -1) this._actionSubscribers.splice(idx, 1);
+    };
+  }
+
+  // 通知订阅者状态变化，支持传递 mutation 名和 payload
+  _notifySubscribers(mutation, payload) {
     const snapshot = this.state;
-    this._subscribers.forEach((callback) => callback(snapshot));
+    this._subscribers.forEach((callback) =>
+      callback(snapshot, mutation, payload)
+    );
   }
 
   // 动态注册模块
@@ -227,7 +269,16 @@ class Store {
   unregisterModule(path) {
     if (typeof path === "string") path = [path];
     const parent = this._modules.get(path.slice(0, -1));
-    parent.removeChild(path[path.length - 1]);
+    if (parent) {
+      parent.removeChild(path[path.length - 1]);
+      resetStoreState(this, this.state);
+    }
+  }
+
+  // 热重载支持
+  hotUpdate(newOptions) {
+    this._modules.register([], newOptions);
+    installModule(this, this.state, [], this._modules.root);
     resetStoreState(this, this.state);
   }
 }

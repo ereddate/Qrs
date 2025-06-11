@@ -2,12 +2,10 @@ import { isComponent } from "./component.js";
 import { isVNode } from "./vnode.js";
 import { nextTick } from "./queue.js";
 
-const isTransition = function (obj) {
-  return obj instanceof Transition;
-};
+const isTransition = (obj) => obj instanceof Transition;
 
 class Transition {
-  constructor(props) {
+  constructor(props = {}) {
     this.props = props;
     this.el = null;
     this.children = null;
@@ -55,54 +53,46 @@ class Transition {
 
   addTransitionClass(el, className) {
     el.classList.add(className);
-    this.props?.css && el.classList.add(`${className}-active`);
+    if (this.props?.css) el.classList.add(`${className}-active`);
   }
 
   removeTransitionClass(el, className) {
     el.classList.remove(className);
-    this.props?.css && el.classList.remove(`${className}-active`);
+    if (this.props?.css) el.classList.remove(`${className}-active`);
   }
 
   render() {
-    const { show, mode = "in-out" } = this.props;
-    const children = this.props.children;
-
+    const { show, children } = this.props;
     if (!children) return null;
 
     if (Array.isArray(children)) {
-      // 处理多个子元素的情况
+      // 多子元素，分别渲染
       return children.map((child) => this.renderChild(child, show));
     }
-
     return this.renderChild(children, show);
   }
 
   renderChild(child, show) {
     if (!child) return null;
-
     if (isComponent(child) || isVNode(child)) {
       const instance = new child.constructor(child.props);
       const el = instance.render();
       instance.el = el;
       this.el = el;
-
       return el;
     } else {
       this.el = child;
       return child;
     }
   }
+
   triggerTransition() {
     if (this.props.show) {
       this.beforeEnter(this.el);
-      nextTick(() => {
-        this.enter(this.el);
-      });
+      nextTick(() => this.enter(this.el));
     } else {
       this.beforeLeave(this.el);
-      nextTick(() => {
-        this.leave(this.el);
-      });
+      nextTick(() => this.leave(this.el));
     }
   }
 }
