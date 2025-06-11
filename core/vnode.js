@@ -2,6 +2,10 @@ import { isComponent } from "./component.js";
 import { nextTick } from "./queue.js";
 import { isTransition } from "./transition.js";
 
+// 工具函数优化
+const isString = (val) => typeof val === "string";
+const isFunction = (val) => typeof val === "function";
+
 class VNode {
   constructor(tag, props = {}, children = [], key = null) {
     this.tag = tag;
@@ -11,54 +15,47 @@ class VNode {
     this.el = null;
     this.key = key;
     this._cachedEl = null;
-    this._eventListeners = {}; // 存储事件监听器，用于销毁时移除
-    return this;
+    this._eventListeners = {};
   }
 
   render(document) {
     const globalDocument = document || window.document;
-
-    // 添加缓存机制
     if (this._cachedEl) return this._cachedEl;
+
     if (isComponent(this.tag)) {
-      // 修正递归逻辑
-      const newInstance = new this.tag.constructor({
-        ...this.props,
-      });
+      const newInstance = new this.tag.constructor({ ...this.props });
       const el = newInstance.render();
       this.el = el;
       return el;
     } else if (isVNode(this.tag)) {
-      // 修正递归逻辑
       const newInstance = new this.tag.constructor(
         this.tag,
-        {
-          ...this.props,
-        },
+        { ...this.props },
         this.children
       );
       const el = newInstance.render();
       this.el = el;
       return el;
-    } else if (!String.is(this.tag)) {
+    } else if (!isString(this.tag)) {
       return;
     }
+
     const elem =
       this.tag === "text"
         ? globalDocument.createTextNode("")
         : globalDocument.createElement(this.tag);
+
     if (this.props) {
       updateProps.bind(this)(elem, this.props);
     }
     if (this.children) {
       updateChildren.bind(this)(elem, this.children);
     }
-    this._cachedEl = elem; // 缓存结果
+    this._cachedEl = elem;
     this.el = elem;
     return elem;
   }
 
-  // 添加shouldUpdate方法
   shouldUpdate(newVNode) {
     if (this.tag !== newVNode.tag) return true;
     if (JSON.stringify(this.props) !== JSON.stringify(newVNode.props))
@@ -68,17 +65,14 @@ class VNode {
     return false;
   }
 
-  // 新增销毁方法
   destroy() {
     if (this.el) {
-      // 移除事件监听器
       Object.entries(this._eventListeners).forEach(([event, handlers]) => {
         handlers.forEach((handler) => {
           this.el.removeEventListener(event, handler);
         });
       });
 
-      // 递归销毁子节点
       if (this.children) {
         this.children.forEach((child) => {
           if (child instanceof VNode) {
@@ -92,12 +86,10 @@ class VNode {
         });
       }
 
-      // 移除 DOM 节点
       if (this.el.parentNode) {
         this.el.parentNode.removeChild(this.el);
       }
 
-      // 清理缓存和引用
       this.el = null;
       this._cachedEl = null;
       this._eventListeners = {};
@@ -105,46 +97,51 @@ class VNode {
   }
 }
 
-const isVNode = function (obj) {
-  return obj instanceof VNode;
-};
+const isVNode = (obj) => obj instanceof VNode;
 
 const updateProps = function (elem, props) {
   const styleObj = {};
   Object.keys(props).forEach((key) => {
     const currentValue = key === "style" ? elem.style.cssText : elem[key];
     const newValue = props[key];
-    // 若值相同则不更新
-    if (currentValue === newValue) {
-      return;
-    }
+    if (currentValue === newValue) return;
     switch (key) {
       case "style":
         Object.assign(styleObj, props[key]);
         break;
       case "class":
-        elem.className = props[key];
+        const classes = Array.isArray(props[key])
+          ? props[key]
+              .map((item) =>
+                typeof item === "object"
+                  ? Object.keys(item)
+                      .filter((k) => item[k])
+                      .join(" ")
+                  : item
+              )
+              .join(" ")
+          : typeof props[key] === "object"
+          ? Object.keys(props[key])
+              .filter((k) => props[key][k])
+              .join(" ")
+          : props[key];
+        elem.className = classes;
         break;
       case "html":
         elem.innerHTML = props[key];
         break;
       case "show":
-        if (props[key]) {
-          elem.style.display = "block";
-        } else {
-          elem.style.display = "none";
-        }
+        elem.style.display = props[key] ? "block" : "none";
         break;
       case "text":
         elem.appendChild(document.createTextNode(props[key]));
         break;
       case "on":
         Object.keys(props[key]).forEach((event) => {
-          const handler = function () {
-            props[key][event].call(props, ...arguments);
+          const handler = (...args) => {
+            props[key][event].call(props, ...args);
           };
           elem.addEventListener(event, handler);
-          // 存储事件监听器，用于销毁时移除
           this._eventListeners[event] = this._eventListeners[event] || [];
           this._eventListeners[event].push(handler);
         });
@@ -154,20 +151,18 @@ const updateProps = function (elem, props) {
         break;
     }
   });
-  // 一次性更新样式
   if (Object.keys(styleObj).length > 0) {
     Object.assign(elem.style, styleObj);
   }
-  // 在属性更新完成，DOM 渲染后执行回调
   nextTick(() => {
-    if (Function.is(elem.props?.afterPropsUpdate)) {
+    if (isFunction(elem.props?.afterPropsUpdate)) {
       elem.props.afterPropsUpdate.call(elem);
     }
   });
 };
 
 const updateChildren = function (elem, children) {
-  if (String.is(children)) {
+  if (isString(children)) {
     elem.appendChild(document.createTextNode(children));
     return;
   }
@@ -193,9 +188,8 @@ const updateChildren = function (elem, children) {
       );
       const el = newVnode.render();
       elem.appendChild(el);
-    } else if (String.is(child)) {
+    } else if (isString(child)) {
       if (/<[a-z][\s\S]*>/i.test(child)) {
-        // 识别HTML字符串并转换为DOM节点
         const template = document.createElement("template");
         template.innerHTML = child.trim();
         const nodes = Array.from(template.content.childNodes).filter(
@@ -207,7 +201,7 @@ const updateChildren = function (elem, children) {
       } else {
         elem.appendChild(document.createTextNode(child));
       }
-    } else if (Array.is(child)) {
+    } else if (Array.isArray(child)) {
       updateChildren.bind(this)(elem, child);
     } else if (isTransition(child)) {
       const transitionEl = child.render();
@@ -216,19 +210,17 @@ const updateChildren = function (elem, children) {
         child.triggerTransition();
       });
     } else if (child instanceof Node) {
-      // 添加 Node 类型检查
       elem.appendChild(child);
     } else if (
-      typeof child !== "undefined" ||
-      child !== false ||
+      typeof child !== "undefined" &&
+      child !== false &&
       child !== null
     ) {
-      child && updateChildren.bind(this)(elem, [child.toString()]);
+      updateChildren.bind(this)(elem, [child.toString()]);
     }
   });
-  // 在子节点更新完成，DOM 渲染后执行回调
   nextTick(() => {
-    if (Function.is(elem.props?.afterChildrenUpdate)) {
+    if (isFunction(elem.props?.afterChildrenUpdate)) {
       elem.props.afterChildrenUpdate.call(elem);
     }
   });
@@ -236,8 +228,17 @@ const updateChildren = function (elem, children) {
 
 const createElem = (tag, props, ...children) => {
   if (isComponent(tag)) {
-    const slots = [];
-    slots.default = children;
+    const slots = {};
+    children.forEach((child) => {
+      if (child?.props?.slot) {
+        const slotName = child.props.slot;
+        slots[slotName] = slots[slotName] || [];
+        slots[slotName].push(child);
+      } else {
+        slots.default = slots.default || [];
+        slots.default.push(child);
+      }
+    });
     const newComponent = new tag.constructor({
       ...tag.props,
       ...props,

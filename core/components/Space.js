@@ -3,7 +3,6 @@ import { createVnode } from "../vnode.js";
 
 const Space = new Component({
   render() {
-    console.log(this);
     const style = {
       display: "flex",
       flexDirection: this.props.direction === "horizontal" ? "row" : "column",

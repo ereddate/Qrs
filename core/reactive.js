@@ -73,7 +73,11 @@ function computed(getter) {
       computedDep.forEach((dep) => queueJob(dep));
       // 在 computed 属性更新，DOM 可能更新后执行回调
       nextTick(() => {
-        if (Function.is(this.props?.afterComputedUpdate)) {
+        if (
+          this &&
+          this.props &&
+          Function.is(this.props?.afterComputedUpdate)
+        ) {
           this.props.afterComputedUpdate.call(this);
         }
       });
@@ -100,13 +104,16 @@ function computed(getter) {
   return computedObj;
 }
 
-function watch(source, callback) {
+function watch(source, callback, context) {
   let getter;
   if (Function.is(source)) {
     getter = source;
   } else if (String.is(source)) {
     getter = () => {
-      let obj = this.data;
+      if (!context.data) {
+        return undefined;
+      }
+      let obj = context.data;
       const keys = source.split(".");
       for (const key of keys) {
         if (obj && Object.is(obj)) {
@@ -118,7 +125,7 @@ function watch(source, callback) {
       return obj;
     };
   } else {
-    throw new Error("watch 的第一个参数必须是函数或字符串");
+    throw new Error("watch's first parameter must be a function or string");
   }
 
   let oldValue = getter();
